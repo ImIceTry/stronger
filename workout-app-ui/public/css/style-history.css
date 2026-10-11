@@ -1,0 +1,338 @@
+/* History groups by calendar month, matching Strong's "September / 3
+   workouts" section headers instead of one flat "Recent workouts" list. */
+.history-month-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 16px 0 8px;
+}
+
+.history-month-header h2 { margin: 0; }
+.history-month-header span { color: var(--text-secondary); font-size: 13px; }
+
+.list .list-item {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  /* UI Polish Pass (2026-09-18) -- .template-grid is a 2-col CSS grid with
+     default align-items:stretch, so a card next to a longer-named
+     neighbor stretches taller than its own content needs. Without this,
+     the shorter card's .template-footer sat right under its own (shorter)
+     content instead of at the card's real bottom edge, while the
+     stretched neighbor's footer sat flush -- footers across a row read as
+     misaligned. flex column + margin-top:auto on the footer (below) pins
+     it to the bottom regardless of how much the card got stretched. */
+  display: flex;
+  flex-direction: column;
+}
+
+.list .list-item .title { font-weight: 600; }
+.list .list-item .meta { margin-top: 4px; }
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.calendar .day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* Trained days: a circle filled with the app's own --border color (was
+   an outline of that color around a --bg-elevated fill -- ImIceTry's ask:
+   fill it with the color the outline already had, rather than a separate
+   fill color) + a small green checkmark badge overlay. Sized up via
+   transform (not width/height) so it visually grows into the wider gaps
+   just added without disturbing the grid's own cell sizing/alignment --
+   transforms don't affect layout, so this can't desync columns the way
+   changing the cell's actual box size would. */
+.calendar .day.trained {
+  color: var(--text);
+  font-weight: 700;
+  border-radius: 50%;
+  background: var(--border);
+  transform: scale(1.15);
+}
+
+.calendar .day.trained::after {
+  content: "\2713";
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #06210f;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* UI Polish Pass (2026-09-18) -- was a solid white circle, the same
+   "every day gets a circle" clutter ImIceTry asked to remove, just in a
+   different color. Circles are now reserved for trained days only (see
+   .day.trained above), so today is marked by color/weight alone instead
+   -- still identifiable, without reintroducing a circle on an untrained
+   day. Comes after .trained in source order so a trained-and-today day
+   still gets the trained circle, just with this blue text on top of it. */
+.calendar .day.today {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.calendar .day.empty { background: transparent; border: none; cursor: default; }
+
+.closeable-title { cursor: pointer; }
+
+.detail {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+/* Unscoped on purpose -- used both inside .detail (history/edit views) and
+   inside plain .exercise-card wrappers (template preview modal). Was
+   ".detail .set-line" only, which silently dropped the flex/space-between
+   in the latter case: the two spans ("Set 1", "30kg x 10") then sat with no
+   gap and visually read as one run-on number ("Set 130kg x 10"). */
+.set-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.set-line.is-pr { color: var(--blue); font-weight: 700; }
+
+/* Exercise detail History tab, matching Strong's own layout exactly
+   (reference screenshots, 2026-09-12) -- bold name, full date, a real
+   "Sets Performed"/"1RM" column header, and per-set trophy pills instead
+   of the old single-line "Set N: Wkg x R 🏆" this replaces. */
+.ed-history-card h3 { margin: 0 0 2px 0; }
+/* UI Polish Pass (2026-09-18) -- .detail is shared/unscoped (also used by
+   the template-preview modal's exercise-card wrappers, per its own
+   comment above), so its base 12px padding is left alone; this override
+   only touches the Exercise Detail History tab's own cards, unifying them
+   with .chart-card's 16px (see that rule's own comment for why). */
+.detail.ed-history-card { padding: 16px; }
+
+/* Exercise Detail About/Records tabs (UI Polish Pass, 2026-09-18) -- these
+   two used to render as flat, unboxed rows directly on the panel
+   background, while their siblings (History/Charts) both use a boxed
+   card -- a real inconsistency in left-edge text inset across the same
+   4-tab screen. Given 2 of 4 tabs already establish "boxed card" as this
+   screen's own language, unifying About/Records onto the same wrapper
+   (rather than removing cards from History/Charts) was the smaller,
+   lower-risk change. Same 16px padding as .ed-history-card/.chart-card. */
+.detail.ed-info-card { padding: 16px; }
+.records-history-btn { margin: 12px 0; }
+.ed-history-date {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.ed-history-col-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.ed-history-set-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 15px;
+}
+.ed-history-set-num {
+  display: inline-block;
+  margin-right: 14px;
+}
+.pr-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 2px 0 6px 0;
+}
+.pr-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--teal);
+  color: var(--teal);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detail-footer {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.detail-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-footer svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Finish summary's "vs last time" block (2026-09-30), see
+   fillFinishComparison. Same row look as the muscle-map detail rows. */
+.finish-compare:empty { display: none; }
+.finish-compare { margin-top: 16px; }
+
+.finish-compare-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.finish-compare-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.finish-compare-row > span:first-child { color: var(--text-secondary); }
+
+.finish-compare-row em {
+  font-style: normal;
+  margin-left: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.finish-compare-row em.up { color: var(--green-light); }
+.finish-compare-row em.down { color: #d9953a; }
+
+/* Full-screen workout detail (Phase 4.3) -- reached via showScreenRaw from
+   the History list, grouped per exercise with a 1RM column only for
+   weight_reps exercises (time/reps_only exercises get a plain 2-column
+   row instead of a blank/zero 1RM cell, matching the plan's explicit
+   "omit, don't fake-empty" instruction). */
+.wd-title { margin: 8px 0 0; }
+.wd-date { margin-bottom: 24px; }
+
+.wd-exercise-block { margin-bottom: 24px; }
+
+.wd-exercise-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.wd-set-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  padding: 4px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.wd-set-row.no-1rm { grid-template-columns: 1fr 2fr; }
+
+.wd-set-1rm { text-align: right; }
+
+.wd-perform-again { margin-top: 24px; }
+
+/* History list rows get a real footer stats line (duration/volume/PRs),
+   matching Strong's history card layout instead of a plain title+date. */
+.list .list-item .footer {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.list .list-item .footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.list .list-item .footer svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Per-exercise "Sets" / "Best set" breakdown on each history card (Phase
+   4.2), sitting between the date and the duration/volume/PR footer row --
+   matches history-list-1.jpg/history-list-2.jpg exactly. */
+.history-summary {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.history-summary-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.history-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 4px 0;
+}
+
+.history-summary-row span:first-child {
+  color: var(--text);
+}
+
+
+.wd-exercise-gear { font-size: 12px; color: var(--text-secondary); padding: 0 0 6px; }

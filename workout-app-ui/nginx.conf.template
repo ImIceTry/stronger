@@ -1,0 +1,15 @@
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    add_header Cache-Control "no-store" always;
+
+    # The backend's host:port comes from the API_UPSTREAM environment variable,
+    # filled in at container start (the nginx image renders every file in
+    # /etc/nginx/templates/ through envsubst). Set it in .env, see .env.example.
+    location /api/ {
+        proxy_pass http://${API_UPSTREAM};
+        proxy_set_header Host $host;
+    }
+}

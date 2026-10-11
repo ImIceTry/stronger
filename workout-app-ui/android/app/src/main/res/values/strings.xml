@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Stronger</string>
+    <string name="title_activity_main">Stronger</string>
+    <string name="package_name">com.imicetry.workoutapp</string>
+    <string name="custom_url_scheme">com.imicetry.workoutapp</string>
+</resources>

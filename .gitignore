@@ -1,0 +1,10 @@
+.env
+*.db
+*.db-*
+data/
+node_modules/
+__pycache__/
+workout-app-ui/public/js/config.js
+android/local.properties
+*.keystore
+*.jks

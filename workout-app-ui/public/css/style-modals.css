@@ -1,0 +1,794 @@
+/* Superset grouping -- client-side only, purely visual connection between
+   two or more exercise cards logged back-to-back. */
+.exercise-card.superset {
+  border-left: 3px solid var(--blue);
+  padding-left: 12px;
+}
+
+/* One superset reads as a single block: continuous accent bar, members
+   separated by a hairline instead of a gap. */
+.exercise-card.superset-cont {
+  margin-top: 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.exercise-card.superset-open { margin-bottom: 0; }
+
+.superset-label {
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* Generic modal, reused for the RPE picker and the superset-link picker */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  z-index: 20;
+  opacity: 1;
+  transition: opacity 200ms ease-out, display 200ms allow-discrete;
+}
+
+.modal-overlay.hidden { display: none; opacity: 0; }
+
+/* PR celebration toast (2026-09-17, Function Expansion Plan item 2.7) --
+   plain auto-dismissing notice, not a modal (see showPrToast's own
+   comment): pointer-events: none so it never blocks a tap on whatever's
+   underneath, z-index above the modal overlay so it stays visible even if
+   the anomaly hint (item 1.2) happens to be open at the same moment. */
+.pr-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  transform: translate(-50%, 12px);
+  background: var(--blue);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease-out, transform 250ms ease-out;
+  max-width: calc(100% - 32px);
+  text-align: center;
+}
+.pr-toast.visible { opacity: 1; transform: translate(-50%, 0); }
+.pr-toast strong { text-transform: uppercase; letter-spacing: 0.03em; }
+
+@starting-style {
+  .modal-overlay:not(.hidden) { opacity: 0; }
+}
+
+/* margin-bottom leaves a gap so the app's own bottom nav stays visible
+   (dimmed, through the overlay backdrop) behind the sheet instead of the
+   sheet running flush to the screen edge and covering it entirely -- was
+   calendar-modal-only, but any modal opened over a screen with the bottom
+   nav showing (e.g. the template preview, opened from Home) hits the same
+   problem, so it belongs on the base rule instead of one modifier. */
+.modal-content {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  padding: 16px;
+  width: 100%;
+  max-height: 70vh;
+  margin-bottom: 70px;
+  overflow-y: auto;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+/* No .hidden class of its own -- modal-content only ever exists inside
+   modal-overlay, so it appears/disappears along with that parent's own
+   display toggle. @starting-style fires whenever this element begins
+   rendering (including because an ancestor's display just changed), so
+   this animates the sheet in without needing its own hidden bookkeeping. */
+@starting-style {
+  .modal-content {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* Size tiers (UI Polish Pass, 2026-09-18) -- until now every sheet in the
+   app, from a tiny "Add note" prompt to a 4-choice picker, used the same
+   edge-to-edge width:100%. These two modifiers give real side margins and
+   round all four corners instead of just the top two, so a sheet's size
+   actually matches how much content it holds. Applied per call site via
+   modalContent.classList.add(...) right after openModal(), same pattern
+   .calendar-modal already used -- closeModal() already resets
+   modalContent.className on every close, so no per-call cleanup needed. */
+.modal-content.size-compact {
+  /* calc(), not width:auto -- .modal-overlay is a row-direction flex
+     container, so a lone flex child with width:auto shrink-wraps to its
+     own content's intrinsic width instead of filling the available row
+     (confirmed live: the calendar rendered as a narrow strip on the left
+     before this fix). calc(100% - 2x the margin below) fills exactly the
+     space the margin leaves, same effect width:100% used to have before
+     any margin existed. */
+  width: calc(100% - 32px);
+  max-width: 400px;
+  margin: 0 16px 86px;
+  border-radius: 16px;
+}
+.modal-content.size-comfortable {
+  width: calc(100% - 24px);
+  margin: 0 12px 70px;
+  border-radius: 16px;
+}
+/* Full-screen tier (2026-09-18, ImIceTry's ask -- the Finish-workout summary
+   was "only a little window," wants it as a real full screen like the
+   active-workout screen itself). Reuses the exact same modal/nav-layer
+   machinery every other size tier already relies on (back button, tap
+   outside, closeModal's own className reset) rather than a whole separate
+   full-screen system with its own nav-layer bookkeeping to get right --
+   just fills the viewport instead of sizing to content. */
+.modal-content.size-full {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  border-radius: 0;
+  border: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden; /* .modal-full-body scrolls instead, so a pinned footer stays put */
+}
+.modal-content.size-full .modal-full-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+.modal-content.size-full .modal-full-footer {
+  flex-shrink: 0;
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+}
+
+/* Docked-in-place panel (RPE picker; Phase 3's numpad reuses this) --
+   anchored flush to the bottom of the viewport, no dimmed backdrop behind
+   it, unlike .modal-overlay above. z-index above the active-workout
+   overlay (9) and even the modal system (20), since this can be open while
+   the active-workout overlay is showing and must render on top of it. */
+.docked-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border);
+  border-radius: 12px 12px 0 0;
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 21;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out, display 200ms allow-discrete;
+}
+
+.docked-panel.hidden { display: none; opacity: 0; transform: translateY(100%); }
+
+@starting-style {
+  .docked-panel:not(.hidden) {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+/* Right-anchored slide-in panel (UI Polish Pass, 2026-09-18, item 3) --
+   for icon+label option lists that used to be full-width bottom-sheet
+   modals (exercise options, exercise-detail/workout-detail/template
+   menus). Structured like .modal-overlay above (real dimmed backdrop,
+   tap-outside-to-close via the overlay's own click handler in app-nav.js)
+   rather than like .docked-panel (no backdrop at all) -- this has a real
+   scrim, so it should behave like the other backdrop-having system. Same
+   z-index tier as .docked-panel, since both can in principle sit above
+   the active-workout overlay and the plain modal system. */
+.side-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 21;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 1;
+  transition: opacity var(--motion-base) var(--motion-ease), display var(--motion-base) allow-discrete;
+}
+.side-panel-overlay.hidden { display: none; opacity: 0; }
+@starting-style {
+  .side-panel-overlay:not(.hidden) { opacity: 0; }
+}
+
+.side-panel {
+  position: absolute;
+  /* was `top:0; right:0` with no rounding -- a full-height-capped drawer
+     still pinned flush to the top-right corner looked cut off there, and
+     square corners on a menu read as "a rectangle," not a menu (ImIceTry's
+     ask, 2026-09-19). Centered as a floating rounded card instead of a
+     right-edge drawer -- simpler and more predictable than anchoring to
+     whichever exercise row's own "..." button opened it, since this same
+     panel is shared across every row at a different vertical position. */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.92);
+  max-height: 80vh;
+  width: min(300px, 82vw);
+  background: var(--bg-elevated);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  padding: 20px 0;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  opacity: 0;
+  transition: transform var(--motion-base) var(--motion-ease), opacity var(--motion-base) var(--motion-ease);
+}
+.side-panel-overlay:not(.hidden) .side-panel { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+
+.side-panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  padding: 0 20px 16px;
+}
+.side-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  transition: transform var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease);
+}
+.side-panel-row:active {
+  transform: scale(0.97);
+  background: var(--input-bg);
+}
+.side-panel-row-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* App-styled confirm() replacement (2026-09-18, showConfirmDialog in
+   app-nav.js) -- see its own HTML comment in index.html for why this is a
+   genuinely independent overlay rather than routed through
+   .modal-overlay/.modal-content. z-index above every other overlay tier
+   (modal 20, docked-panel/side-panel 21) so it always renders on top
+   regardless of what's already open underneath. */
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 200ms ease-out, display 200ms allow-discrete;
+}
+.confirm-dialog-overlay.hidden { display: none; opacity: 0; }
+@starting-style {
+  .confirm-dialog-overlay:not(.hidden) { opacity: 0; }
+}
+.confirm-dialog {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  padding: 20px;
+  width: calc(100% - 48px);
+  max-width: 360px;
+}
+
+/* Numpad (active-workout-numpad.jpg): 4x4 grid -- 3 digit columns plus one
+   action column (keyboard-toggle / step +- / RPE / NEXT), matching the
+   reference layout exactly. */
+.numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.numpad-key {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 400;
+  padding: 16px 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.numpad-key:active { background: var(--input-bg); }
+
+.numpad-collapse { display: flex; align-items: center; justify-content: center; }
+.numpad-collapse svg { width: 22px; height: 22px; }
+
+.numpad-action { font-size: 15px; font-weight: 700; }
+
+/* The weight-up/hold/down suggestion on the KG step (2026-09-10) -- a real
+   button now (tap for a plain-language explanation of what the symbol
+   means), but deliberately styled as a small badge/box rather than a full
+   numpad key, since it's advisory, not an input control. */
+.weight-hint-btn { display: flex; align-items: center; justify-content: center; }
+.weight-hint-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 700;
+}
+.weight-hint-btn:active .weight-hint-box { border-color: var(--blue); color: var(--blue); }
+
+/* Small explanation popup for the badge above (2026-09-18) -- replaces a
+   plain native alert(), which blocked the page and needed an explicit OK
+   tap. Sits in normal flow directly above the numpad grid rather than as an
+   absolutely-positioned overlay, so it can't misalign relative to whichever
+   grid cell the badge happens to occupy that render. Dismissed the same way
+   it opens -- tapping the badge again toggles it closed. */
+.weight-hint-popup {
+  margin: 0 16px 8px;
+  padding: 10px 12px;
+  background: var(--bg-elevated, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.numpad-blank { display: block; }
+
+.numpad-step-pair {
+  display: flex;
+  gap: 4px;
+}
+
+.numpad-step-pair button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.numpad-step-pair button:active { background: var(--input-bg); }
+
+.numpad-next {
+  background: var(--blue);
+  color: #fff;
+  border-radius: 8px;
+}
+
+/* padding: 0 here on purpose -- the sticky header and the grid each own their
+   own padding instead. Negative-margin tricks to make a sticky child bleed
+   into a padded, overflow:auto, rounded-corner parent are fragile and didn't
+   reliably stick (literally) across scroll positions. */
+.modal-content.calendar-modal {
+  /* UI Polish Pass (2026-09-18) -- ImIceTry's ask: use most of the screen
+     (was 75vh/70px bottom margin), while still keeping the side margins
+     added earlier this pass so it isn't edge-to-edge. */
+  max-height: 92vh;
+  padding: 0;
+  /* calc(), not width:auto -- see .size-compact's own comment above for why. */
+  width: calc(100% - 32px);
+  margin: 0 16px 24px;
+}
+
+/* Strong's real Calendar view: "Calendar" + the weekday row stick together
+   as one fixed header while only the day grid underneath scrolls. */
+.cal-modal-sticky-header {
+  position: sticky;
+  top: 0;
+  background: var(--bg-elevated);
+  z-index: 2;
+  padding: 16px 16px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cal-modal-sticky-header h3 { margin: 0 0 8px; font-size: 16px; }
+
+.cal-modal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.cal-modal-weekdays span {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cal-modal-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  /* UI Polish Pass (2026-09-18) -- was 8px, bumped to 14px then further
+     to 20px per ImIceTry's follow-up ask for more room between dates. */
+  gap: 20px;
+  padding: 8px 16px 16px;
+}
+
+/* Month boundary (UI Polish Pass, 2026-09-18) -- replaces the old labeled
+   full-width .cal-modal-month-pill block, and a since-abandoned pure-CSS
+   two-segment-border attempt that read as disconnected lines. Drawn by
+   drawMonthBoundaries() (app-history.js) after the grid is in the DOM,
+   using each real day cell's own measured position -- position:absolute
+   children of .cal-modal-grid (itself position:relative) don't
+   participate in its grid auto-placement, so this overlay can sit on top
+   without consuming a real grid cell. */
+.cal-month-boundary-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* Real SVG path, not stitched-together absolutely-positioned divs (that
+   approach could only ever round the free end-caps, not the actual joint
+   between the horizontal and vertical runs -- ImIceTry's ask was a real
+   curve AT the bend itself, which needs an actual arc, not more div
+   border-radius). One <path> per transition, drawn with quadratic-curve
+   corners where it switches direction -- see drawMonthBoundaries(). */
+.cal-month-boundary-svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.cal-month-boundary-path {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 2px;
+  stroke-linecap: round;
+}
+.cal-month-boundary-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* Full-screen template preview -- a real screen (own fixed layer, like
+   .active-overlay) rather than a bottom sheet, so it can give the exercise
+   list its own scroll region while the header and Start Workout button stay
+   fixed in place instead of scrolling (and getting cut off) with it. */
+.tpl-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 16;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  /* UI Polish Pass (2026-09-18): was full-bleed edge-to-edge, the one
+     screen in the app that didn't match #app's own centered/capped
+     layout (padding:16px; max-width:480px; margin:0 auto), confirmed live
+     next to every other screen. No padding added here (unlike #app) --
+     .tpl-preview-topbar/-scroll/-footer already each carry their own 16px
+     horizontal padding independently, matching #app's inset exactly, so
+     adding padding here too would double it to 32px. */
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.tpl-preview.hidden { display: none; }
+
+.tpl-preview-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 16px;
+  flex-shrink: 0;
+}
+
+.tpl-preview-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 16px;
+}
+
+.tpl-preview-scroll h1 { margin: 4px 0 8px; }
+
+.tpl-preview-footer {
+  flex-shrink: 0;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.tpl-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tpl-preview-row-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tpl-preview-row .title { font-weight: 700; }
+
+.tpl-preview-row-category {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Strong's real olive "high row"-style bar -- confirmed (not guessed) against
+   a real reference screenshot to be the visual rendering of a sticky note
+   (Phase 1.2/1.9), not a separate "variant" mechanism. */
+.variant-bar {
+  background: #6b7a3a;
+  color: #f2f5e8;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 0 0 8px;
+}
+
+/* Machine/variant tag (2026-09-17, Function Expansion Plan item 3.2) -- a
+   small tappable pill, distinct from .variant-bar above (an unrelated,
+   pre-existing name for the sticky-note bar) so the two don't get confused
+   despite the coincidental naming. Neutral gray, not colored like the
+   sticky-note bar -- this is metadata about the set, not a note. */
+.machine-variant-tag {
+  display: inline-block;
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: none;
+  margin: 0 0 8px;
+  cursor: pointer;
+}
+
+.handle-chip { margin-right: 6px; }
+.handle-group-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 10px 0 6px;
+}
+.handle-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.handle-option {
+  background: var(--input-bg);
+  color: var(--text);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.handle-option.selected { border-color: var(--blue); }
+
+.exercise-note {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-style: italic;
+  padding: 0 4px 8px;
+}
+
+.exercise-note-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.modal-actions { margin-top: 12px; }
+
+.rest-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.rest-preset-grid button {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 8px 0;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rest-preset-grid button.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+.modal-hint {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 4px 0 12px;
+}
+
+/* Persistent-default opt-in checkbox (2026-09-17, Function Expansion Plan
+   item 1.3 remaining sub-scope) -- the rest-timer modal's own, deliberately
+   plain rather than borrowing the Settings screen's toggle-switch styling,
+   which assumes that screen's own row layout/width. */
+.modal-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.replace-suggestions {
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.replace-suggestions .exercise-row { padding: 12px 4px; }
+
+.rpe-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rpe-pill {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.rpe-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.rpe-grid button {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 12px 0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rpe-grid button.selected { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+.rpe-description {
+  margin-top: 12px;
+  padding: 12px 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  text-align: center;
+}
+
+.set-type-toggle {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Row-options panel reuses the plain (non-compact) strip inside the docked
+   panel opened by openSetRowOptions -- full-size buttons are fine there,
+   it's a deliberate one-at-a-time sheet, not something stacked N times
+   down the card. */
+.row-options-panel { margin-top: 4px; }
+
+
+.set-type-toggle button {
+  flex: 1;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 8px 0;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.set-type-toggle button.active.drop { background: #ffb020; color: #1a1200; border-color: #ffb020; }
+/* Deliberately neutral, not a saturated color -- Phase 5's color-discipline
+   pass restricts saturated color to confirm-blue/drop-amber only, so
+   warm-up (lower-stakes) and anything purely descriptive rather than an
+   intensity signal gets a muted highlight instead. Assisted (2026-09-18,
+   replaces "failure" -- which used to get its own red here) is descriptive
+   (a spotter/machine helped), not an intensity signal, so it joins
+   warmup/unilateral's neutral treatment rather than keeping failure's red. */
+.set-type-toggle button.active.warmup { background: var(--text-secondary); color: var(--bg); border-color: var(--text-secondary); }
+.set-type-toggle button.active.unilateral { background: var(--text-secondary); color: var(--bg); border-color: var(--text-secondary); }
+.set-type-toggle button.active.assisted { background: var(--text-secondary); color: var(--bg); border-color: var(--text-secondary); }
+/* Reps/Time field-mode picker (2026-09-12, openFieldModePicker) -- reuses
+   this same row-of-buttons shape rather than a second bespoke panel style.
+   "Reps" gets the neutral warm-up-style highlight (it's the ordinary
+   default, not a special state); "Time" gets blue, same as every other
+   confirm/selected-value accent in the app. */
+.set-type-toggle button.active.reps { background: var(--text-secondary); color: var(--bg); border-color: var(--text-secondary); }
+.set-type-toggle button.active.time { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+
+/* Radial quick menu (swipe left-to-right on an exercise card). */
+.radial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: rgba(0, 0, 0, 0.55);
+  touch-action: none;
+}
+.radial-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-width: 120px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  pointer-events: none;
+}
+.radial-item {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms ease-out, background 120ms;
+}
+.radial-item svg { width: 24px; height: 24px; }
+.radial-item.hover { transform: scale(1.25); background: var(--blue); color: #fff; }
+.radial-item.danger { color: #ff6b6b; }
+.radial-item.danger.hover { background: #d9444a; color: #fff; }
+
+.ms-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.ms-row .ms-name { flex: 3; }
+.ms-row .ms-value { flex: 2; }

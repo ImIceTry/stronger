@@ -1,0 +1,213 @@
+/* Palette pulled from real Strong screenshots + their own brand CSS
+   (--strong-blue/--strong-dark on strong.app) -- not a generic dark theme. */
+:root {
+  --bg: #1a212c;
+  --bg-elevated: #1e2632;
+  --border: #313d4d;
+  --blue: #3d9bf0;
+  --text: #eef1f5;
+  --text-secondary: #8892a0;
+  /* Phase 5.5 color-discipline pass (2026-09-09): was #2ecc71, a fully
+     saturated "flat UI" emerald that reads as a 4th vivid signal color
+     alongside the blue/red/amber the plan says should be the only ones on
+     screen -- used for the mini-bar, the resting-timer banner, and the
+     calendar's trained-day checkmark badge, all via this one variable.
+     Toned down (HSL saturation 63%->35%, lightness 49%->45%) to a muted
+     sage/moss green that still reads clearly as "active/positive" against
+     the dark theme without competing as its own bright accent. Unverified
+     judgment call -- no reference screenshot confirms Strong's actual
+     resting-banner color, so this is a reasoned choice, not a measured
+     match. The header crown icon's gold was also audited and deliberately
+     left alone: an existing decorative brand icon isn't the kind of
+     interactive "signal" color (confirm/cancel/drop-set) this rule is
+     actually about. (--purple, once the Profile dashboard's own CSS bar
+     chart, was removed along with that chart when it was replaced by
+     embedded Grafana panels.) */
+  --green: #4b9b6c;
+  --green-light: color-mix(in srgb, var(--green) 55%, white);
+  --input-bg: #29323f;
+  /* Strong's own PR-pill teal (History tab reference screenshot, 2026-09-12)
+     -- distinct from --blue/--green, matches neither, so it gets its own
+     variable rather than reusing one of them off-brand. */
+  --teal: #2dd4bf;
+}
+
+/* "Stronger" color scheme (2026-09-18, ImIceTry's ask) -- a second full
+   palette selectable from Settings, alongside the default "Strong" one
+   above. Dark greyish-purple, Obsidian-inspired, rather than Strong's own
+   blue-on-navy. Only the base chrome colors change; --green/--teal (PR
+   pills, confirmed-state green) stay constant across both schemes since
+   they're semantic status colors, not brand colors -- same reasoning this
+   file's own --green comment already applies to keeping crown-icon gold
+   untouched. Applied via a `data-theme` attribute set on <html> (see the
+   inline script at the top of index.html, which sets it before first
+   paint to avoid a flash of the wrong scheme), not a class, so it reads
+   clearly as "which of several named schemes," not a boolean toggle. */
+:root[data-theme="stronger"] {
+  --bg: #1e1c24;
+  --bg-elevated: #26232e;
+  --border: #3a3542;
+  --blue: #9d7bff;
+  --text: #e9e6f2;
+  --text-secondary: #96909f;
+  --input-bg: #2c2836;
+}
+
+* { box-sizing: border-box; }
+
+/* UI Polish Pass (2026-09-18), item 1 -- kills the browser's own default
+   translucent tap-highlight overlay, which shows on every tap on a real
+   phone (not visible in desktop DevTools, which is why this went unnoticed
+   until ImIceTry reported it live) on top of whatever custom :active styling
+   an element already has. This codebase had never set this anywhere, so
+   every tap got that default shape-shaded flash layered over the app's own
+   deliberate press feedback below -- that flash, not any color choice
+   actually made in this codebase, is almost certainly the "unfitting blue"
+   reported. The app's own :active rules (below, and per-component files)
+   remain the only visible feedback once this is set. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Shared motion tokens (UI Polish Pass, 2026-09-18) -- one small set of
+   durations reused by every new/updated transition this pass touches,
+   instead of each screen picking its own number. Existing already-working
+   transitions (modal 200ms, overlay 260ms) are left alone rather than
+   forced onto these to avoid regressing anything that already reads fine;
+   these tokens are for what's newly built or newly given a transition it
+   didn't have before. */
+:root {
+  --motion-fast: 140ms;
+  --motion-base: 220ms;
+  --motion-slow: 300ms;
+  --motion-ease: ease-out;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding-bottom: 72px; /* room for the fixed bottom nav */
+}
+
+/* Phase 5.8: every screen's <h1> was already rendering identically (32px/700
+   via the browser's UA default, no screen overrode font-size/weight
+   differently) -- but that was an accident of nobody having touched it
+   yet, not a declared rule. Made explicit so it can't silently drift
+   between screens later without someone noticing the shared class change. */
+h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Shared secondary/caption text style -- used across screens for dates,
+   category subtitles, elapsed-time readouts, etc. Was previously only
+   defined scoped to ".list .list-item .meta", which meant every OTHER
+   bare class="meta" element in the app (exercise-detail's category
+   subtitle, the active-workout elapsed-time line, the template-preview
+   meta line -- 15 usages total, checked via grep) silently fell back to
+   plain body text (primary color, 16px) instead of the intended muted
+   caption look. Real, confirmed-live divergence, not a hypothetical one. */
+.meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* Fixed, not sticky, and out of document flow deliberately -- each screen's
+   own big title docks at top:0 as you scroll (see .page-title below) and
+   takes over this exact spot, so this bar can't also reserve its own 44px
+   of flow height without leaving a gap once the title arrives. Transparent
+   background so it never paints over the title/page content sitting
+   underneath at the same coordinates; its own opacity is faded out by the
+   same scroll-driven code that shrinks the title (setupCollapsingTitle in
+   app.js), so the version number/sync badge just fade away as a title
+   docks in rather than colliding with it. */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  height: 44px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+#app-version {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.badge {
+  background: #ffb020;
+  color: #1a1200;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+/* Bottom tab bar -- matches Strong's real nav position, not a top tab row */
+#bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border);
+  z-index: 10;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Persistent "still training" bar, independent of which tab is selected
+   underneath -- shown whenever a workout is active but the full overlay is
+   collapsed. Sits directly above the nav, same idea as a music mini-player. */
+.mini-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 64px;
+  z-index: 9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  /* Matches the app's own theme color (2026-09-10) -- was --green, an
+     unrelated accent nothing else in the app actually uses this way. */
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  padding: 12px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out, display 200ms allow-discrete;
+}
+
+/* Own specific rule (not just the generic .hidden) so this participates in
+   the same transition-behavior: allow-discrete pattern as the other
+   overlays below -- slides down and fades out instead of vanishing
+   instantly, matching the plan's "active-workout collapse-to-mini-bar
+   transition" (Phase 5.4). */
+.mini-bar.hidden {
+  display: none;
+  opacity: 0;
+  transform: translateY(20%);
+}
+
+@starting-style {
+  .mini-bar:not(.hidden) {
+    opacity: 0;
+    transform: translateY(20%);
+  }
+}
+
+body.mini-bar-visible { padding-bottom: 132px; }
+

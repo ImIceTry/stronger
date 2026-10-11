@@ -1,0 +1,16 @@
+[Unit]
+Description=Workout App backend (set-ingest, history, CSV mirror)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@APP_DIR@
+EnvironmentFile=-@APP_DIR@/.env
+ExecStart=@PYTHON@ server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

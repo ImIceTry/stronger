@@ -1,0 +1,133 @@
+/* Full-screen overlay -- deliberately NOT one of the regular .screen panels,
+   so it floats independent of bottom-nav tab selection instead of being
+   "the Workout tab's content."
+   Slides up from below now (2026-09-12, ImIceTry's own ask -- "it just pops
+   up... I want it to be like a popup page that comes below") instead of a
+   plain opacity fade, and .active-bar is a drag handle that can pull the
+   whole sheet back down to dismiss (see wireActiveOverlayDragToDismiss) --
+   same visual language as the docked panel's own slide-up/down
+   (@starting-style below mirrors that one exactly). transform is set
+   inline by the drag handler mid-gesture; this transition only smooths the
+   open/close snap, not the live drag itself (that needs to track the
+   finger 1:1, no easing lag). */
+.active-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 260ms ease-out, transform 260ms ease-out, display 260ms allow-discrete;
+}
+
+.active-overlay.hidden { display: none; opacity: 0; transform: translateY(100%); }
+
+@starting-style {
+  .active-overlay:not(.hidden) { opacity: 0; transform: translateY(100%); }
+}
+
+/* Dragging (see wireActiveOverlayDragToDismiss) adds this to suppress the
+   transition above -- without it, the transition's own 260ms easing fights
+   the drag handler setting a new transform every pointermove, reading as
+   laggy instead of tracking the finger directly. */
+.active-overlay.dragging { transition: none; }
+
+.active-overlay-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.cancel-link {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #e0503c;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-align: center;
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 200ms ease-out;
+}
+
+/* Strong's empty-workout state is just two bare text links (Add Exercise /
+   Cancel Workout), not a boxed input + full Finish button. Shown only while
+   there are no exercises yet -- the non-empty layout is untouched since we
+   have no reference for what that looks like at the bottom of a real
+   in-progress workout. */
+.text-link-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-align: center;
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 200ms ease-out;
+}
+
+.nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 12px 4px 8px;
+  cursor: pointer;
+  transition: transform 200ms ease-out;
+}
+
+.nav-tab svg { width: 22px; height: 22px; }
+.nav-tab.active { color: var(--blue); }
+
+#app {
+  padding: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* Bottom-nav screen switches (Phase 5.4) -- opacity fade only, no
+   transform: switching tabs replaces the whole viewport's content, so a
+   slide/scale on the incoming screen would fight against the outgoing one
+   vanishing instantly (display:none has no exit transition of its own
+   here since the old screen isn't kept around to animate out -- fading
+   only the incoming screen in is the honest scope of what's achievable
+   without a full cross-fade rewrite, which this pass isn't). */
+.screen {
+  opacity: 1;
+  transition: opacity 200ms ease-out, display 200ms allow-discrete;
+}
+
+.screen.hidden { display: none; opacity: 0; }
+
+@starting-style {
+  .screen:not(.hidden) { opacity: 0; }
+}
+
+/* No !important: every element that gets .hidden either has no other
+   display rule at all (this stays the only declaration, same result) or
+   has its own more-specific .X.hidden rule (e.g. .screen.hidden above)
+   that already agrees on display:none -- removing !important doesn't
+   change any current outcome, it just stops blocking transition-behavior:
+   allow-discrete (Phase 5.4) on the handful of selectors that need their
+   display:none swap to happen at the end of a transition instead of
+   instantly. Audited every class co-occurring with "hidden" in index.html
+   before making this change, not assumed safe. */
+.hidden { display: none; }
+

@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <!-- Simple dumbbell silhouette for the status-bar/notification icon.
+         Android status-bar icons must be a flat white shape on transparent
+         background (the OS re-tints/masks them itself); this is not a
+         final polished app icon, just a legible placeholder for the
+         always-on workout notification. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M2,10 h2 v4 h-2 z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M4,8 h2 v8 h-2 z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6,11 h12 v2 h-12 z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M18,8 h2 v8 h-2 z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M20,10 h2 v4 h-2 z" />
+</vector>

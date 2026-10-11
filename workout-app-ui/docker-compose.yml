@@ -1,0 +1,32 @@
+# Everything in Docker (UI + backend, empty database, one command):
+#   docker compose --profile full up -d --build      then open http://localhost:8090
+# UI only, with the backend running some other way (systemd, another host):
+#   set API_UPSTREAM in .env (see .env.example), then: docker compose up -d
+services:
+  workout-app-data:
+    image: nginx:alpine
+    container_name: ${UI_CONTAINER_NAME:-workout-app-data}
+    restart: unless-stopped
+    ports:
+      - "${UI_PORT:-8090}:80"
+    environment:
+      API_UPSTREAM: ${API_UPSTREAM:-workout-api:8092}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./public:/usr/share/nginx/html:ro
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      workout-api:
+        condition: service_started
+        required: false
+
+  workout-api:
+    profiles: ["full"]
+    build: ../workout-app
+    restart: unless-stopped
+    volumes:
+      - workout-data:/data
+
+volumes:
+  workout-data:

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Stronger</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<meta name="theme-color" id="theme-color-meta" content="#1a212c">
+<script>
+// Applied before any CSS is parsed, so the right scheme's colors are what
+// actually paint first -- setting this any later (e.g. from app.js at the
+// bottom of the page) would show a flash of the default "Strong" scheme on
+// every load for anyone using "Stronger" instead. THEME_COLORS mirrors the
+// two schemes' --bg values in style-base.css; kept in sync manually since a
+// build-less project has no way to read a CSS custom property before the
+// stylesheet has even loaded.
+(function () {
+  var THEME_COLORS = { strong: "#1a212c", stronger: "#1e1c24" };
+  var theme = localStorage.getItem("colorTheme") || "strong";
+  document.documentElement.dataset.theme = theme;
+  document.getElementById("theme-color-meta").content = THEME_COLORS[theme] || THEME_COLORS.strong;
+})();
+</script>
+<link rel="stylesheet" href="css/style-base.css">
+<link rel="stylesheet" href="css/style-overlay.css">
+<link rel="stylesheet" href="css/style-active-workout.css">
+<link rel="stylesheet" href="css/style-history.css">
+<link rel="stylesheet" href="css/style-exercises.css">
+<link rel="stylesheet" href="css/style-shared-ui.css">
+<link rel="stylesheet" href="css/style-modals.css">
+</head>
+<body>
+
+<header id="topbar">
+  <span id="offline-badge" class="badge hidden">Offline</span>
+  <span id="pending-badge" class="badge hidden"></span>
+  <span id="app-version"></span>
+</header>
+
+<main id="app">
+
+  <section id="screen-home" class="screen">
+    <div class="section-header">
+      <h1>Workout</h1>
+      <span class="header-icons">
+        <button id="home-search-btn" class="icon-btn-plain" title="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fccb26" stroke-width="2" fill-opacity="0" class="header-icon crown-icon"><path d="M3 8l4 3 5-6 5 6 4-3-2 10H5z"/></svg>
+      </span>
+    </div>
+    <div class="section-label">Quick start</div>
+    <button id="btn-new-workout" class="btn-primary btn-big btn-caps">Start an Empty Workout</button>
+    <div id="next-up-card" class="next-up-card hidden"></div>
+    <div class="section-header">
+      <h2>Templates</h2>
+      <span class="header-icons">
+        <button id="btn-add-template" class="icon-btn" title="Add template">+</button>
+        <button id="btn-template-folders" class="icon-btn" title="Folders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon"><path d="M3 7h5l2 2h11v10H3z"/></svg></button>
+        <button id="btn-templates-menu" class="icon-btn" title="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
+      </span>
+    </div>
+    <div class="subtle-label" id="repeat-count-label">My Templates</div>
+    <div id="repeat-list" class="list template-grid"></div>
+    <div id="template-folders-container"></div>
+    <div id="archived-templates-section" class="archived-templates hidden">
+      <button id="archived-templates-toggle" class="archived-templates-toggle">
+        <span id="archived-templates-label">Archived templates</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron-icon"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div id="archived-templates-list" class="list template-grid hidden"></div>
+    </div>
+  </section>
+
+  <section id="screen-search" class="screen hidden">
+    <div class="section-header">
+      <button id="search-back" class="icon-btn-plain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon back-arrow-icon"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+      <input id="search-input" class="input-name" type="text" placeholder="Search exercises, templates, workouts...">
+    </div>
+    <div id="search-results"></div>
+  </section>
+
+  <section id="screen-history" class="screen hidden">
+    <div class="section-header">
+      <h1>History</h1>
+      <span class="header-icons">
+        <button id="open-calendar-btn" class="icon-btn" title="Calendar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        </button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fccb26" stroke-width="2" fill-opacity="0" class="header-icon crown-icon"><path d="M3 8l4 3 5-6 5 6 4-3-2 10H5z"/></svg>
+      </span>
+    </div>
+
+    <div id="history-list" class="list"></div>
+  </section>
+
+  <section id="screen-workout-detail" class="screen hidden">
+    <div class="section-header">
+      <button id="workout-detail-back" class="icon-btn-plain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon back-arrow-icon"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+      <span class="header-icons">
+        <button id="workout-detail-share-btn" class="icon-btn" title="Share">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon"><path d="M12 3v13M7 8l5-5 5 5M5 21h14"/></svg>
+        </button>
+        <button id="workout-detail-menu-btn" class="icon-btn" title="More">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+        </button>
+      </span>
+    </div>
+    <div id="workout-detail-body"></div>
+  </section>
+
+  <section id="screen-exercises" class="screen hidden">
+    <div class="section-header">
+      <h1>Exercises</h1>
+      <span class="header-icons">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        <svg id="exercises-sort-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon" title="Sort"><path d="M7 4v10M7 4l-3 3M7 4l3 3M17 20V10M17 20l-3-3M17 20l3-3"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fccb26" stroke-width="2" fill-opacity="0" class="header-icon crown-icon"><path d="M3 8l4 3 5-6 5 6 4-3-2 10H5z"/></svg>
+      </span>
+    </div>
+    <input id="exercises-search" class="input-name" type="text" placeholder="Search exercises...">
+    <div id="exercises-list"></div>
+  </section>
+
+  <section id="screen-exercise-detail" class="screen hidden">
+    <div class="section-header">
+      <button id="exercise-detail-back" class="icon-btn-plain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon back-arrow-icon"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+      <span id="exercise-detail-name" class="ed-title"></span>
+      <span class="header-icons">
+        <button id="exercise-detail-menu-btn" class="icon-btn" title="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
+      </span>
+    </div>
+    <div id="exercise-detail-subtitle" class="meta"></div>
+    <div class="ed-tabs">
+      <button class="ed-tab" data-ed-tab="about">About</button>
+      <button class="ed-tab active" data-ed-tab="history">History</button>
+      <button class="ed-tab" data-ed-tab="charts">Charts</button>
+      <button class="ed-tab" data-ed-tab="records">Records</button>
+    </div>
+    <div id="ed-panel-about" class="ed-panel hidden"></div>
+    <div id="ed-panel-history" class="ed-panel"></div>
+    <div id="ed-panel-charts" class="ed-panel hidden"></div>
+    <div id="ed-panel-records" class="ed-panel hidden"></div>
+  </section>
+
+  <section id="screen-profile" class="screen hidden">
+    <div class="section-header">
+      <h1>Profile</h1>
+      <span class="header-icons">
+        <svg id="profile-settings-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon" title="Settings">
+          <!-- Real gearwheel (UI Polish Pass, 2026-09-18; simplified twice
+               same day per ImIceTry's live feedback). v1: 8 disconnected line
+               spokes, no ring -- read as a sun. v2: ring + inner hole + 8
+               filled teeth -- fixed the sun problem but read as busy/heavy.
+               v3 (this one): dropped the axle-hole circle, cut to 6 teeth,
+               AND -- the actual fix for v2's real flaw, found by rendering
+               it at 120px to check -- moved the teeth to start flush against
+               the ring's own outer edge (ring r=6, stroke-width 2, so its
+               visible outside edge sits at r=7) instead of floating a few
+               units past it. v2's teeth never touched the ring at any size,
+               so it read as a ring orbited by separate dashes/dots, not one
+               gear silhouette -- zoomed-in rendering is the only way this
+               particular flaw actually shows up, a flat code read of the
+               coordinates alone wouldn't catch it. -->
+          <circle cx="12" cy="12" r="6"/>
+          <rect x="11" y="3" width="2" height="2.3" fill="currentColor" stroke="none"/>
+          <rect x="11" y="3" width="2" height="2.3" fill="currentColor" stroke="none" transform="rotate(60 12 12)"/>
+          <rect x="11" y="3" width="2" height="2.3" fill="currentColor" stroke="none" transform="rotate(120 12 12)"/>
+          <rect x="11" y="3" width="2" height="2.3" fill="currentColor" stroke="none" transform="rotate(180 12 12)"/>
+          <rect x="11" y="3" width="2" height="2.3" fill="currentColor" stroke="none" transform="rotate(240 12 12)"/>
+          <rect x="11" y="3" width="2" height="2.3" fill="currentColor" stroke="none" transform="rotate(300 12 12)"/>
+        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fccb26" stroke-width="2" fill-opacity="0" class="header-icon crown-icon"><path d="M3 8l4 3 5-6 5 6 4-3-2 10H5z"/></svg>
+      </span>
+    </div>
+    <div class="profile-avatar-row">
+      <span class="avatar-circle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+      </span>
+      <span id="profile-workout-count" class="avatar-label"></span>
+      <button id="profile-account-btn" class="icon-btn-plain" title="Account details">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="avatar-row-chevron"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+    <div class="section-header">
+      <h2>Muscle Map</h2>
+    </div>
+    <div id="muscle-map"></div>
+    <div id="weekly-sets"></div>
+  </section>
+
+  <section id="screen-settings" class="screen hidden">
+    <div class="section-header">
+      <button id="settings-back" class="icon-btn-plain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon back-arrow-icon"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+      <h1>Settings</h1>
+    </div>
+    <div class="settings-section-title">Appearance</div>
+    <div class="settings-row settings-row-clickable" id="settings-theme-row">
+      <div class="settings-row-text">
+        <span>Color scheme</span>
+      </div>
+      <span class="settings-row-value">
+        <span id="settings-theme-value">Strong</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="settings-row-chevron"><path d="M9 6l6 6-6 6"/></svg>
+      </span>
+    </div>
+    <div class="settings-section-title">Sound &amp; Haptics</div>
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <span>Sound Effects</span>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" id="settings-sound-toggle"><span class="toggle-track"></span></label>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <span>Haptics</span>
+        <span class="settings-row-hint">Button taps and rest-timer vibration</span>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" id="settings-haptics-toggle"><span class="toggle-track"></span></label>
+    </div>
+    <div class="settings-section-title">Workout</div>
+    <div class="settings-row settings-row-clickable" id="settings-unfinished-row">
+      <div class="settings-row-text">
+        <span>Handle incomplete sets</span>
+      </div>
+      <span class="settings-row-value">
+        <span id="settings-unfinished-value">Ask every time</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="settings-row-chevron"><path d="M9 6l6 6-6 6"/></svg>
+      </span>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <span>Show template-update prompt</span>
+        <span class="settings-row-hint">Asks before updating a template when a workout differs from it</span>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" id="settings-template-prompt-toggle"><span class="toggle-track"></span></label>
+    </div>
+  </section>
+
+  <section id="screen-account" class="screen hidden">
+    <div class="section-header">
+      <button id="account-back" class="icon-btn-plain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon back-arrow-icon"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+      <h1>Account Details</h1>
+    </div>
+    <div class="settings-section-title">Bodyweight</div>
+    <div id="account-latest-weight" class="meta"></div>
+    <div class="settings-row settings-row-clickable" id="account-log-weight-row">
+      <div class="settings-row-text"><span>Log weight</span></div>
+    </div>
+    <div class="settings-row settings-row-clickable" id="account-import-yazio-row">
+      <div class="settings-row-text">
+        <span>Import from Yazio</span>
+        <span class="settings-row-hint">Pulls your existing daily weight tracking in, no re-entry needed</span>
+      </div>
+    </div>
+    <div class="settings-section-title">Recent entries</div>
+    <div id="account-weight-list"></div>
+  </section>
+
+  <section id="screen-statistics" class="screen hidden">
+    <div class="section-header">
+      <h1>Statistics</h1>
+      <span class="header-icons">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fccb26" stroke-width="2" fill-opacity="0" class="header-icon crown-icon"><path d="M3 8l4 3 5-6 5 6 4-3-2 10H5z"/></svg>
+      </span>
+    </div>
+    <!-- Real Grafana panels (Phase 6, moved here from Profile) -- each panel
+         already renders its own title/legend inside the embed, so no
+         separate chart-card-header wrapper is needed (that would just
+         double up the title). Was a live <iframe> straight to embed-proxy;
+         switched to a periodically-rendered static PNG (2026-09-14,
+         ImIceTry's own ask: panels shouldn't "have to load every time" --
+         an iframe pulls Grafana's whole JS bundle plus a live datasource
+         query on every screen visit, and unlike a plain JSON GET,
+         cross-origin iframe content can't be cached or read back client-
+         side at all). loadGrafanaSnapshots() (app.js) fetches each
+         data-snapshot image with the same offline-cache-fallback pattern
+         apiGet already uses for JSON, and sets .src once it resolves --
+         no src here means nothing loads before that runs. -->
+    <div class="chart-card">
+      <img class="grafana-embed" data-snapshot="workout-1" alt="Training volume over time">
+    </div>
+    <div class="chart-card">
+      <img class="grafana-embed" data-snapshot="workout-2" alt="Workout stat">
+    </div>
+    <div class="chart-card">
+      <img class="grafana-embed" data-snapshot="workout-3" alt="Workout stat">
+    </div>
+    <div class="chart-card">
+      <img class="grafana-embed" data-snapshot="workout-4" alt="Workout stat">
+    </div>
+    <div class="chart-card">
+      <img class="grafana-embed" data-snapshot="workout-5" alt="Workout stat">
+    </div>
+    <!-- Yazio nutrition panels, same static-snapshot pattern as the workout
+         panels above -- added once the Yazio export got its own loader into
+         this same Grafana instance (Vault Home Server Open Problem 15). -->
+    <div class="section-label">Nutrition</div>
+    <div class="chart-card">
+      <img class="grafana-embed" data-snapshot="yazio-1" alt="Nutrition stat">
+    </div>
+    <div class="chart-card">
+      <img class="grafana-embed" data-snapshot="yazio-2" alt="Nutrition stat">
+    </div>
+    <div class="chart-card">
+      <img class="grafana-embed" data-snapshot="yazio-3" alt="Nutrition stat">
+    </div>
+  </section>
+
+</main>
+
+<!-- Full-screen overlay, independent of the bottom nav's tab selection --
+     starting/opening a workout shows this on top of whatever tab is
+     underneath; collapsing it (chevron) reveals that tab again with the
+     mini-bar left showing the workout is still running. -->
+<div id="active-overlay" class="active-overlay hidden">
+  <div id="active-bar" class="active-bar">
+    <span class="active-bar-left">
+      <button id="btn-collapse-active" class="icon-btn-plain" title="Collapse">&#9660;</button>
+      <button id="btn-manual-timer" class="icon-btn-plain" title="Timer">
+        <!-- Real stopwatch (UI Polish Pass, 2026-09-18) -- was a reset/
+             refresh arrow icon on a button titled "Timer", a mismatch
+             between the icon and its own label. -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="active-bar-timer-icon"><path d="M9 2h6"/><path d="M12 2v3"/><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/></svg>
+      </button>
+    </span>
+    <span id="active-elapsed">0:00</span>
+    <button id="btn-finish-top" class="active-bar-finish btn-caps">Finish</button>
+  </div>
+
+  <!-- Standalone manual timer (2026-09-13, ImIceTry's own ask) -- separate
+       from any per-set rest timer, started via the circle icon above.
+       Sits right under the top bar, only visible while one is running. -->
+  <div id="manual-timer-bar" class="manual-timer-bar hidden">
+    <div class="manual-timer-progress"></div>
+    <div class="manual-timer-content">
+      <span class="manual-timer-tick">0:00</span>
+      <button id="btn-stop-manual-timer" class="manual-timer-stop" title="Stop timer">&times;</button>
+    </div>
+  </div>
+
+  <div class="active-overlay-body">
+    <div class="active-name-row">
+      <input id="workout-name" class="input-name active-name-input" type="text" placeholder="Workout name">
+      <button id="active-workout-menu-btn" class="icon-btn" title="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
+    </div>
+    <!-- UI Polish Pass (2026-09-18) -- only the renamed Finish button
+         ("Save Template") and the input's placeholder used to distinguish
+         building a template from logging a real workout, easy to lose
+         track of mid-session. Toggled alongside that same button label in
+         renderActiveScreen (app.js). -->
+    <span id="building-template-badge" class="building-template-badge hidden">Building Template</span>
+    <div id="active-elapsed-sub" class="meta"></div>
+
+    <div id="exercise-list"></div>
+
+    <button id="btn-add-exercise-empty" class="text-link-btn hidden">Add Exercise</button>
+
+    <div id="add-exercise-box" class="add-exercise">
+      <input id="exercise-input" type="text" placeholder="Add exercise...">
+      <div id="exercise-suggestions" class="suggestions hidden"></div>
+    </div>
+
+    <button id="btn-cancel-workout" class="cancel-link">Cancel Workout</button>
+  </div>
+</div>
+
+<button id="mini-bar" class="mini-bar hidden">
+  <span id="mini-bar-name"></span>
+  <span id="mini-bar-elapsed"></span>
+</button>
+
+<!-- Full-screen template preview -- shown before actually starting a
+     workout from a template, so a real screen (like Strong's own), not a
+     bottom sheet: only the exercise list scrolls, the header and the Start
+     Workout button stay put. -->
+<div id="template-preview-screen" class="tpl-preview hidden">
+  <div class="tpl-preview-topbar">
+    <button id="template-preview-back" class="icon-btn-plain" title="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon back-arrow-icon"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+    <button id="template-preview-menu-btn" class="icon-btn-plain" title="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
+  </div>
+  <div class="tpl-preview-scroll">
+    <h1 id="template-preview-title"></h1>
+    <div id="template-preview-meta" class="meta"></div>
+    <div id="template-preview-list"></div>
+  </div>
+  <div class="tpl-preview-footer">
+    <button id="template-preview-start" class="btn-primary btn-big btn-caps">Start Workout</button>
+  </div>
+</div>
+
+<nav id="bottom-nav">
+  <button class="nav-tab" data-screen="profile">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+    <span>Profile</span>
+  </button>
+  <button class="nav-tab" data-screen="history">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    <span>History</span>
+  </button>
+  <button class="nav-tab active" data-screen="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+    <span>Workout</span>
+  </button>
+  <button class="nav-tab" data-screen="exercises">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h1M19 12h1M6 8v8M18 8v8M8 12h8"/></svg>
+    <span>Exercises</span>
+  </button>
+  <button class="nav-tab" data-screen="statistics">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M11 20V4M18 20v-7"/></svg>
+    <span>Statistics</span>
+  </button>
+</nav>
+
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div id="modal-content" class="modal-content"></div>
+</div>
+
+<!-- Docked-in-place panel (RPE picker; the Phase 3 numpad reuses this same
+     mechanism) -- anchored to the bottom of the viewport, no dimmed
+     backdrop behind it, unlike the modal system above. -->
+<div id="docked-panel" class="docked-panel hidden"></div>
+
+<!-- Right-anchored slide-in panel (UI Polish Pass, 2026-09-18, item 3) --
+     for icon+label option lists (exercise options, exercise-detail menu,
+     workout-detail menu, template menu) that used to be plain full-width
+     bottom-sheet lists via the modal system above. Structured exactly
+     like #modal-overlay (dimmed backdrop, tap-outside-to-close) since it
+     has a real backdrop just like that system, unlike the docked-panel's
+     no-backdrop RPE-picker case above. -->
+<div id="side-panel-overlay" class="side-panel-overlay hidden">
+  <div id="side-panel" class="side-panel"></div>
+</div>
+
+<!-- App-styled replacement for the browser's native confirm() (2026-09-18,
+     showConfirmDialog in app-nav.js) -- its own independent overlay, NOT
+     routed through #modal-overlay/#modal-content: those are a single
+     shared element whose innerHTML gets fully replaced on every open, so
+     reusing them here would silently destroy whatever modal (e.g. the
+     Manage Folders list) was already open underneath a confirm prompt
+     triggered from inside it. A real confirm() never had this problem --
+     it's a genuinely separate browser-level layer that always renders on
+     top without disturbing the page underneath, which this mirrors.
+     Highest z-index of any overlay (see its own CSS) so it always sits on
+     top of a modal, side panel, or docked panel alike. -->
+<div id="confirm-dialog-overlay" class="confirm-dialog-overlay hidden">
+  <div id="confirm-dialog" class="confirm-dialog"></div>
+</div>
+
+<!-- Site-specific config (native API base, Grafana snapshot base) -- gitignored,
+     copy config.example.js to config.js and fill in your own values. Loaded
+     first since app.js reads window.APP_CONFIG at top-level parse time. -->
+<script src="js/config.js"></script>
+<script src="js/queue.js"></script>
+<script src="js/muscle-map.js"></script>
+<!-- Split out of app.js (2026-09-17, Function Expansion Plan Loop 2) --
+     plain global-scope scripts, not ES modules: this project has no
+     bundler, and a plain <script> split preserves the exact same runtime
+     semantics a single giant file already had (shared global scope,
+     function-declaration hoisting) with zero risk of the import/export
+     reference errors a module conversion would introduce. Load order
+     matters only in that these must finish registering their functions
+     before app.js's own boot code runs at the bottom of the page, same as
+     queue.js/muscle-map.js above already do. -->
+<script src="js/app-utils.js"></script>
+<script src="js/app-exercise-search.js"></script>
+<script src="js/app-api.js"></script>
+<script src="js/app-nav.js"></script>
+<script src="js/app-screens.js"></script>
+<script src="js/app-overlay.js"></script>
+<script src="js/app-settings.js"></script>
+<script src="js/app-profile.js"></script>
+<script src="js/app-history.js"></script>
+<script src="js/app-exercises.js"></script>
+<script src="js/app-home.js"></script>
+<script src="js/app-plan.js"></script>
+<script src="js/app-finish.js"></script>
+<script src="js/app-pr-anomaly.js"></script>
+<script src="js/app-add-exercise.js"></script>
+<script src="js/app-rpe-picker.js"></script>
+<script src="js/app-reorder.js"></script>
+<script src="js/app-row-actions.js"></script>
+<script src="js/app-exercise-menu.js"></script>
+<script src="js/app-radial-menu.js"></script>
+<script src="js/app-graph-viewer.js"></script>
+<script src="js/app-set-manipulation.js"></script>
+<script src="js/app-render.js"></script>
+<!-- This project has no bundler, so third-party Capacitor plugins can't be
+     `import`ed -- their published npm package only calls registerPlugin()
+     (which is what actually populates window.Capacitor.Plugins.X) when that
+     JS module actually runs, and without a bundler nothing ever executes
+     it. The plugin's own "unpkg" browser build (a plain IIFE, vendored here
+     since node_modules isn't served) expects a global `capacitorExports`
+     with a .registerPlugin() method -- Android's native bridge already
+     injects a working `window.Capacitor` with exactly that method before
+     any page script runs, so aliasing it is enough; no need to also load
+     @capacitor/core's own duplicate copy of that same object. -->
+<script>
+  window.capacitorExports = window.Capacitor;
+  // Only load the plugin's script on native Android -- window.Capacitor
+  // doesn't exist at all on the plain web/PWA version (no bridge to inject
+  // it), so loading this unconditionally would throw on every page view.
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+    document.write('<script src="js/vendor-foreground-service.js"><\/script>');
+  }
+</script>
+<script src="js/app-rest-timer.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

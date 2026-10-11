@@ -1,0 +1,909 @@
+/* Shared loading placeholder (Phase 5.6) -- one shimmering skeleton used
+   everywhere a screen used to just show plain "Loading..." text (Home's
+   template list, template preview, workout detail, exercises list, the
+   exercise-detail tabs, Profile). */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-line {
+  height: 14px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--border) 50%, var(--bg-elevated) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.btn-primary {
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 16px;
+  width: 100%;
+  cursor: pointer;
+  transition: transform 200ms ease-out;
+}
+
+.btn-big { padding: 16px; font-size: 18px; margin: 8px 0; }
+
+/* Destructive confirm-dialog action (2026-09-18, showConfirmDialog's
+   danger option) -- same shape as .btn-primary, red instead of blue,
+   matching the #e0503c accent Delete labels already use elsewhere
+   (.exercise-row.template-row-danger etc.), not a new color. */
+.btn-danger { background: #e0503c; }
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  /* Was unused anywhere in the app until showConfirmDialog (2026-09-18) --
+     full width to match .btn-primary's own footprint when the two are
+     stacked as a dialog's confirm/cancel pair. */
+  width: 100%;
+  cursor: pointer;
+  transition: transform 200ms ease-out;
+}
+
+.input-name {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  width: 100%;
+  margin: 12px 0;
+}
+
+/* Strong shows the workout name as plain bold text, not a boxed input --
+   still a real, editable <input> underneath, just styled to disappear
+   until focused so it reads the same way. */
+.active-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 0 0;
+}
+
+/* UI Polish Pass (2026-09-18) -- persistent "which mode am I in" reminder,
+   see index.html's own comment on this element. Blue (the app's own
+   accent), not the amber .badge class -- this is a mode indicator, not a
+   warning/pending state, so it shouldn't borrow that class's meaning. */
+.building-template-badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--blue) 18%, transparent);
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.building-template-badge.hidden { display: none; }
+
+.active-name-input.input-name {
+  background: none;
+  border: 1px solid transparent;
+  padding: 8px 0;
+  margin: 0;
+  font-size: 20px;
+  flex: 1;
+}
+
+.active-name-input.input-name:focus {
+  background: var(--input-bg);
+  border-color: var(--border);
+  padding: 8px 12px;
+}
+
+#active-elapsed-sub {
+  margin: 4px 0 12px;
+}
+
+.add-exercise input {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 16px;
+  width: 100%;
+}
+
+/* Deliberately no card box (border/background/shadow) -- Strong's own
+   active-workout screen (reference screenshots, 2026-09-10) has exercises
+   flowing directly on the page background, separated by spacing and the
+   exercise name alone, not boxed cards stacked on top of each other. */
+.exercise-card {
+  margin: 12px 0;
+  touch-action: pan-y; /* left-to-right swipe opens the radial menu */
+}
+
+/* Reorder mode (2026-09-12) -- long-pressing any exercise name collapses
+   the whole screen to this: just names + a drag handle, no set tables.
+   .dragging lifts that one row visually (shadow + scale) while it's being
+   dragged, same "picked up" convention most reorder UIs use. */
+.reorder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.reorder-header .reorder-done-btn { width: auto; padding: 0; }
+.exercise-reorder-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+.exercise-reorder-row.dragging {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transform: scale(1.02);
+  position: relative;
+  z-index: 1;
+}
+.reorder-handle {
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: grab;
+  touch-action: none;
+  padding: 4px 8px;
+}
+.reorder-name { font-size: 16px; color: var(--text); }
+
+.exercise-card h3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  color: var(--blue);
+}
+
+/* Flexing the button to the end only gets its 44px tap-target box flush to
+   the edge -- the "..." glyph itself is centered inside that box, so it
+   still reads as inset from the true right edge (2026-09-10, same fix
+   already applied to the template card's own corner ⋮). */
+.exercise-card h3 .options-btn { margin-right: -12px; }
+
+/* The exercise name is a real button now too (2026-09-11, tap to open its
+   detail page) but keeps reading as plain heading text -- no box, no
+   different color, just cursor:pointer -- rather than looking like a
+   second action competing with the ⋯ menu next to it. */
+.exercise-name-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.exercise-name-link:active { color: var(--text); }
+
+/* Set table -- mirrors Strong's SET / PREVIOUS / KG / REPS / check columns.
+   KG/REPS columns widened relative to PREVIOUS (2026-09-10 -- the boxes
+   already filled their column, but that column read as narrower than it
+   needed to be next to PREVIOUS's comparatively generous width). PREVIOUS
+   widened again at SET/CHECK's expense (2026-09-11) -- with a real RPE tag
+   now showing ("48kg × 9 @9.5"), its old width wrapped onto two lines; SET
+   and CHECK only ever hold a single digit/letter or a small icon, so they
+   give up width more cheaply than KG/REPS' own numpad-field boxes would. */
+.set-table-header, .set-row {
+  display: grid;
+  grid-template-columns: 0.45fr 1.55fr 1.1fr 1.1fr 0.45fr;
+  gap: 10px;
+  align-items: center;
+}
+
+
+/* The header labels default to left-aligned text in their column, but the
+   value below them (the numpad-field box) already spans the full column --
+   center the labels to match instead of sitting flush at the column's own
+   left edge (2026-09-10). */
+.col-kg, .col-reps { text-align: center; }
+
+/* A single-digit set number left-aligned under the 3-letter "SET" label
+   reads as drifted left even though both start at the same edge -- center
+   both consistently instead (2026-09-10). */
+.col-set { text-align: center; }
+
+/* On a pending row, .col-set is a real button now (2026-09-10) -- tap the
+   set number to pick Warm-up/Drop/Failure, replacing the old separate
+   "Set options" link. Reset to look like plain text until tapped -- no
+   underline (2026-09-11, ImIceTry's call, dropped along with .col-previous
+   and .rest-divider-time.idle's own dotted-underline tap hints). .tagged
+   uses the same drop/failure/warmup accent colors the confirmed-row inline
+   (D)/(F)/(W) tags and the old row-options link already used, not new
+   colors. */
+button.col-set {
+  background: none;
+  border: none;
+  font: inherit;
+  color: var(--text);
+  width: 100%;
+  cursor: pointer;
+}
+button.col-set:active { color: var(--blue); }
+button.col-set.tagged.drop { color: #ffb020; text-decoration: none; font-weight: 700; }
+button.col-set.tagged.failure { color: #e0503c; text-decoration: none; font-weight: 700; }
+button.col-set.tagged.warmup { color: var(--text-secondary); text-decoration: none; font-weight: 700; }
+/* One-Handed reuses warmup's neutral treatment (not a 4th saturated color) --
+   it's descriptive (which limb did the work), not an intensity signal like
+   drop/failure, so it doesn't earn amber/red per the color-discipline rule
+   below. */
+button.col-set.tagged.unilateral { color: var(--text-secondary); text-decoration: none; font-weight: 700; }
+/* Assisted (2026-09-18, replaces "failure") reuses the same neutral
+   treatment -- it describes how a set was performed (spotter/machine help),
+   not an intensity signal like drop, so it doesn't earn its own saturated
+   color either, same reasoning as unilateral above. */
+button.col-set.tagged.assisted { color: var(--text-secondary); text-decoration: none; font-weight: 700; }
+
+/* Horizontal padding matches .set-row-swipe-wrap .set-row's own 24px
+   exactly (2026-09-12 fix, "realign the set numbers with the SET [header]",
+   corrected same day -- the first attempt used 24px here too, which
+   over-corrected: the header sits directly in .exercise-card (still inset
+   by .active-overlay-body's own 16px padding), while a row's wrapper is
+   bled -16px out of that same padding first. Matching paddings 1:1 doesn't
+   align them; the header only needs enough of its own padding to make up
+   the *difference* -- row content starts at 0 (bled) + 24 = 24px from the
+   viewport edge, header content needs to start at 16 (not bled) + X = 24,
+   so X = 8, the original padding, unchanged from before the bleed existed. */
+.set-table-header {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  margin-bottom: 2px;
+}
+
+.set-list { margin: 0; }
+/* Tighter than the shared .text-link-btn padding (2026-09-12, part of a
+   general vertical-gap tightening pass) -- this link sits directly under
+   the last set row, and 16px all around read as an oversized gap in that
+   one specific spot. Horizontal padding stays, only top/bottom shrinks. */
+.add-set-btn { padding: 6px 16px; }
+
+/* The rest timer itself, not a separate floating banner -- startRestTimer
+   patches .rest-divider-time directly on whichever one of these is
+   currently live (see renderExerciseCard's isLiveRest). Margin on both
+   sides (not just top) so the gap above it and below it match regardless
+   of what precedes it -- a bare confirmed row or a pending row's own
+   row-options-btn used to leave a different gap than the divider's own
+   flush-zero gap into the row after it, which read as uneven/jumbled
+   (2026-09-10 recalibration). */
+/* A real full-width bar with the time inside it (2026-09-10, ImIceTry's own
+   call) for live (ticking, blue-tinted, tappable to adjust) and historical
+   (a confirmed set's own recorded rest, quieter since it's just a record
+   now). Idle no longer shares this shape (2026-09-12, ImIceTry's own call,
+   reverting the 2026-09-10 decision above for this one state specifically)
+   -- see .rest-divider.idle below, a thin line instead, tightening every
+   still-untouched gap between sets (most of them, most of the time). */
+.rest-divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 5px 0;
+  padding: 6px 0;
+  border-radius: 8px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  overflow: hidden; /* clips .rest-divider-progress to the bar's own rounded corners */
+  /* transform included here (UI Polish Pass, 2026-09-18), not in the shared
+     press-feedback rule (style-shared-ui.css) -- this element already has
+     its own multi-property transition, and a second rule setting
+     `transition: transform ...` would replace this one outright rather
+     than merge with it (transition doesn't merge across rules, same
+     reasoning as .numpad-field's own comment there). */
+  transition: padding 380ms ease-out, background-color 380ms ease-out, border-color 380ms ease-out, transform 160ms ease-out;
+}
+
+/* Every state is the ENTIRE bar as one <button> now (2026-09-11) -- idle
+   and historical each have exactly one action (edit their own rest),
+   and live's old second action (the ✕ stop control) moved into the edit
+   numpad's own Skip key, so live is down to one tap target too. */
+button.rest-divider { cursor: pointer; }
+button.rest-divider:active { border-color: var(--blue); transform: scale(0.98); }
+
+.rest-divider.live { background: rgba(61, 155, 240, 0.15); border-color: var(--blue); }
+.rest-divider.historical { opacity: 0.75; }
+
+/* Just a line with the time in the middle (2026-09-12) -- no box, no icon,
+   a hairline on each side of the label instead of the fuller live/
+   historical bar shape. */
+.rest-divider.idle {
+  background: transparent;
+  border-color: transparent;
+  padding: 2px 0;
+}
+.rest-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.rest-bar-icon { width: 14px; height: 14px; color: var(--text-secondary); flex-shrink: 0; }
+.rest-divider.live .rest-bar-icon { color: var(--blue); }
+
+/* Morphs from the idle line's own compact padding into this bar's real
+   padding/background/border the moment a set gets confirmed and this
+   specific position's timer actually starts (2026-09-12, ImIceTry's own
+   ask) -- an approximation, not a pixel-perfect shape morph (the idle
+   line and the live bar are different markup entirely -- icon+progress+
+   tick vs a bare line+label -- so this animates the container's own box
+   growing into place while the new content fades in with it, rather than
+   literally reshaping the old content into the new). Scoped to
+   .just-activated only, same reasoning as .set-row's own .just-confirmed
+   -- isLiveRest alone stays true for many later renders while the timer
+   keeps ticking (including ones triggered by confirming a set in a
+   completely different exercise), so animating on that alone would replay
+   this every time, not just once when it actually turns live. */
+@keyframes rest-divider-activate {
+  from { padding: 2px 0; background-color: transparent; border-color: transparent; }
+}
+.rest-divider.live.just-activated {
+  animation: rest-divider-activate 420ms ease-out;
+}
+
+/* Depletes leftward as the countdown runs (2026-09-11, ImIceTry's own call)
+   -- startRestTimer's per-second update shrinks the width directly, this
+   transition just smooths each 1px jump instead of snapping. Sits behind
+   .rest-divider-content (z-index), fully transparent fill color since the
+   bar's own live background already reads as "filled" -- this just erodes
+   that fill away from the right edge as time passes. */
+.rest-divider-progress {
+  position: absolute;
+  inset: 0;
+  right: auto;
+  background: rgba(61, 155, 240, 0.35);
+  transition: width 1s linear;
+  z-index: 0;
+}
+
+.rest-divider-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+/* Standalone manual timer (2026-09-13) -- same depleting-fill visual
+   language as .rest-divider.live above, but full-width and docked right
+   under the top bar since it's workout-wide, not scoped to one exercise's
+   set list. */
+.manual-timer-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: rgba(61, 155, 240, 0.15);
+  border-bottom: 1px solid var(--blue);
+  flex-shrink: 0;
+}
+.manual-timer-bar.hidden { display: none; }
+.manual-timer-progress {
+  position: absolute;
+  inset: 0;
+  right: auto;
+  background: rgba(61, 155, 240, 0.35);
+  transition: width 1s linear;
+  z-index: 0;
+}
+.manual-timer-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 16px;
+}
+.manual-timer-tick { color: var(--blue); font-size: 15px; font-weight: 700; }
+.manual-timer-stop {
+  background: none;
+  border: none;
+  color: var(--blue);
+  font-size: 20px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.rest-divider-time {
+  background: none;
+  border: none;
+  font-family: inherit;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rest-divider.live .rest-divider-tick { color: var(--blue); font-size: 15px; }
+
+/* No border between rows -- Strong's own reference has no line under each
+   set, only the rest-divider (its own element, between sets that actually
+   have a rest gap) reads as a separator. Plain vertical spacing carries
+   the rest. */
+.set-row {
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+/* Left-swipe-to-delete wrapper (2026-09-10, replaces the old dedicated x
+   button) -- clips the row so it can slide left on drag; wireSwipeToDelete
+   drives .set-row's own transform, this just provides the clipped red
+   backing revealed underneath as it slides.
+   Bled edge-to-edge (2026-09-12, ImIceTry's own ask -- "the green" i.e. a
+   confirmed row's fill should reach the true screen edges, not stop at
+   .active-overlay-body's own 16px padding). Widening happens here, on the
+   wrapper, rather than only on .set-row itself, because overflow:hidden
+   here is what clips the swipe gesture -- widening just the inner row
+   would still get clipped back down to the old (narrower) bounds. No
+   border-radius at this width -- rounded corners flush against the actual
+   screen edge would look like a mistake, not a design choice. */
+.set-row-swipe-wrap {
+  position: relative;
+  overflow: hidden;
+  margin: 0 -16px;
+  width: calc(100% + 32px);
+}
+.swipe-delete-bg {
+  position: absolute;
+  inset: 0;
+  background: #e0503c;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+/* No box around a set row (2026-09-12, reverting the boxed-bar look from
+   earlier the same day -- ImIceTry's own call: plain rows, not cards).
+   background stays opaque and matches the page (2026-09-10 bug fix, still
+   applies) purely so a swipe-to-delete's red backdrop underneath doesn't
+   show through at rest -- not for a visible box. min-height keeps a
+   pending and confirmed row the same height regardless of state: a pending
+   row's tallest cell is the 32x32 boxed .confirm-btn in the CHECK column,
+   while a confirmed row's is just the 16x16 .confirmed-check icon, and
+   grid rows size to their tallest cell. Transition is what makes the
+   confirm state change (whole row turning green) fade instead of
+   snapping. */
+.set-row-swipe-wrap .set-row {
+  position: relative;
+  touch-action: pan-y;
+  background: var(--bg);
+  /* Horizontal padding is 8px (the original inset) + 16px (compensating
+     for the wrapper's own -16px bleed margin above) -- keeps SET/PREVIOUS/
+     KG/etc. sitting at the same visual position they always have; only
+     the row's own background/fill extends further out to reach the
+     screen edge, not the content itself. */
+  padding: 10px 24px;
+  min-height: 54px;
+  transition: background-color 220ms ease;
+}
+
+/* The entire row turns green on confirm (2026-09-12, ImIceTry's own ask) --
+   a flat, edge-to-edge fill, not a rounded/bordered box. background-image
+   (an opaque solid painted as a "gradient") layers over the opaque
+   background-color instead of replacing it, so the result stays solid,
+   not see-through -- same swipe-backdrop reasoning as the base rule above.
+   The fade-in animation is scoped to .just-confirmed only (2026-09-12 fix)
+   -- every render rebuilds every exercise card, confirmed rows included, so
+   this used to replay on EVERY set confirmed anywhere in the workout, not
+   just the one that was actually just confirmed (read as the row/badge
+   "blinking" for no reason on unrelated confirms). js sets .just-confirmed
+   for exactly one row per render, the one logSet just pushed -- see
+   justConfirmedKey. Duration bumped 280ms -> 480ms (2026-09-12, "still
+   seems too instantaneous") -- same bump applied to badge-pop-in below. */
+.set-row.confirmed {
+  background-color: var(--bg);
+  background-image: linear-gradient(rgba(75, 155, 108, 0.32), rgba(75, 155, 108, 0.32));
+}
+.set-row.confirmed.just-confirmed {
+  animation: set-confirm-fade-in 480ms ease-out;
+}
+@keyframes set-confirm-fade-in {
+  from { background-color: var(--bg); background-image: none; }
+}
+.set-row.confirmed .col-set,
+.set-row.confirmed .col-kg,
+.set-row.confirmed .col-reps {
+  font-weight: 700;
+  color: var(--green);
+}
+
+/* KG/REPS are real buttons on a confirmed row too now (2026-09-10) --
+   tapping one reopens exactly that set for editing, replacing the old
+   pencil icon -- styled to still read as plain confirmed text, not a boxed
+   control, so the row doesn't look any different at rest. */
+button.col-kg, button.col-reps {
+  background: none;
+  border: none;
+  font: inherit;
+  width: 100%;
+  cursor: pointer;
+  padding: 0;
+  text-align: center;
+}
+
+/* The header's REPS/TIME label is a real button now too (2026-09-12) --
+   every exercise shares one layout, and this is what switches a card's
+   still-open rows between the two entry modes. Reads as plain header text
+   at rest, same treatment col-set's pending-row button already gets. */
+button.col-reps.field-mode-toggle {
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  padding: 0;
+  text-align: center;
+  width: 100%;
+}
+button.col-reps.field-mode-toggle:active { color: var(--blue); }
+
+/* Same simple checkmark shape for both pending and confirmed now
+   (2026-09-12, ImIceTry's own ask) -- a pending row's own confirm-btn uses
+   this exact same svg/class, just recolored via the .confirmed context
+   below, instead of the two states drawing genuinely different glyphs
+   (a plain "check mark" character vs this svg path). Default color here
+   is the pending look (text-secondary, matches the boxed confirm-btn's own
+   text color); .confirmed overrides it to green. */
+.confirmed-check {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+/* Lighter green than the row's own tint/text (2026-09-12, ImIceTry's own
+   ask) -- against a now clearly-green row, the same --green the text uses
+   would blend in instead of standing out as the actual "done" marker. */
+button.confirm-btn.confirmed .confirmed-check {
+  color: var(--green-light);
+}
+/* Pops in rather than just appearing, but only for the row that was
+   actually just confirmed (2026-09-12 fix, see justConfirmedKey and
+   .set-row.confirmed.just-confirmed's own comment above -- same replay-on-
+   every-unrelated-render bug, same fix). Duration bumped 220ms -> 380ms
+   ("still seems too instantaneous"). */
+.confirmed-check.just-confirmed {
+  animation: badge-pop-in 380ms ease-out;
+}
+
+.col-previous {
+  color: var(--text-secondary);
+  font-size: 12px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Only a <button> when there's a real previous value to copy (2026-09-10). */
+button.col-previous { cursor: pointer; }
+
+/* Second line under PREVIOUS on a pending row (2026-09-30) -- what beats
+   last time, see pendingGoalText. Fits inside the row's existing height. */
+.prev-goal {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--green-light);
+}
+button.col-previous:active { color: var(--blue); }
+
+/* Numpad-driven field display (active-workout-numpad.jpg) -- a div, not an
+   <input>, since a custom numpad drives it instead of the native keyboard.
+   Back to its own small box (2026-09-12, ImIceTry's own call) -- the brief
+   "no box anywhere, the whole row is the box" experiment earlier today was
+   too far the other way; a bar specifically around the KG and REPS/TIME
+   values is what he actually wanted back, not the full-row box, and not a
+   boxless row either. The row's own min-height (see
+   .set-row-swipe-wrap .set-row) keeps a confirmed row's height matching a
+   pending one even though the confirmed KG/REPS buttons stay boxless plain
+   text -- this box doesn't need to also exist on the confirmed side for
+   that. */
+.numpad-field {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 4px;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  width: 100%;
+  cursor: pointer;
+  transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease, transform 160ms ease-out;
+}
+
+/* A suggestion, not a committed value yet (2026-09-10) -- dimmed/lighter-
+   weight text, closer to a native input's placeholder than the solid look
+   a typed-or-confirmed value gets. Tapping the checkmark on it still logs
+   exactly this number; the numpad or a PREVIOUS tap (either counts as
+   "touched") switches it back to the normal solid style. No dashed border
+   (2026-09-11, ImIceTry's call) -- the dimmed text alone carries the
+   distinction, so the box's outline stays solid. */
+.numpad-field.ghost {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.numpad-field.active { border-color: var(--blue); }
+
+/* The same "this is the box the numpad is editing" highlight on a FINISHED
+   set's KG/REPS (2026-10-03, ImIceTry's ask). Those are boxless buttons at
+   rest, so the box appears only while active: same fill and radius as the
+   pending .numpad-field, with the blue ring drawn as an inset shadow (not a
+   border), padded to the pending box's size with the padding cancelled by a
+   negative margin, so the row neither grows nor shifts when it appears.
+   Text stays confirmed-green. */
+.set-row.confirmed button.col-kg.active,
+.set-row.confirmed button.col-reps.active {
+  background: var(--input-bg);
+  box-shadow: inset 0 0 0 1px var(--blue);
+  border-radius: 8px;
+  padding: 8px 4px;
+  margin: -8px 0; /* cancels the padding's height so the row never grows or shifts */
+}
+
+/* Wraps the REPS box so the RPE badge (2026-09-11, moved here from KG per
+   ImIceTry's own call -- RPE describes how the reps felt, so it reads more
+   naturally next to the rep count) can sit on its corner as a sibling, not
+   a child -- the box's own textContent doubles as the numpad's read/write
+   data, so a nested badge would corrupt reps parsing. width:100% keeps the
+   wrapper filling the same grid column the bare .col-reps box used to
+   occupy directly. Shared by both the pending row's numpad-field version
+   and the confirmed row's plain button version. */
+.rpe-badge-wrap { position: relative; width: 100%; }
+
+.rpe-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+/* No default animation here (2026-09-12 fix) -- a ghost RPE badge exists
+   for as long as the set is pending, recreated fresh on every unrelated
+   render the same as everything else in this rebuild-every-render
+   architecture, so animating it on mount meant it replayed constantly --
+   reported as it "blinks for a moment" every time any set anywhere gets
+   confirmed. It's a passive, always-there suggestion, not a discrete
+   event, so it just appears now, no animation. The confirmed badge still
+   gets one, but only for the specific row that was actually just
+   confirmed (see .just-confirmed and justConfirmedKey). Duration bumped
+   180ms -> 320ms ("still seems too instantaneous"). */
+.rpe-badge.just-confirmed {
+  animation: badge-pop-in 320ms ease-out;
+}
+@keyframes badge-pop-in {
+  from { transform: scale(0.4); opacity: 0; }
+}
+
+/* Ghost-prefilled RPE (2026-09-12, same treatment as weight/reps/duration)
+   -- a suggestion carried over from last time, not yet a committed pick,
+   until the set is confirmed. */
+.rpe-badge.ghost {
+  background: var(--text-secondary);
+  color: var(--bg);
+}
+
+/* Confirmed-row RPE is a real <button> now (2026-09-17, Function Expansion
+   Plan item 2.6, one-tap RPE straight from the confirmed row) -- the base
+   .rpe-badge rule's pointer-events: none above is correct for the pending
+   row's own ghost <span> (a passive preview, never meant to be tapped
+   directly) but would make this one unclickable, so it's overridden only
+   for the button variant specifically. */
+button.rpe-badge {
+  pointer-events: auto;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.col-check {
+  text-align: center;
+}
+
+/* A small box around the checkmark (2026-09-10 -- back from the plain-glyph
+   declutter pass, ImIceTry's own call), not the old full-width boxed button
+   this used to be -- sized to the glyph, centered in its column. */
+button.confirm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0 auto;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+button.confirm-btn:active { color: var(--blue); border-color: var(--blue); }
+
+/* A confirmed row's own checkmark is a button too now (2026-09-11, tap to
+   uncheck) but keeps the plain-glyph look the rest of the confirmed-row
+   declutter pass already established -- no box, unlike the pending row's
+   own .confirm-btn above, since this needs to still read as "done", not
+   as a pending action waiting to be tapped. */
+button.confirm-btn.confirmed {
+  width: auto;
+  height: auto;
+  background: none;
+  border: none;
+  padding: 0;
+}
+button.confirm-btn.confirmed:active .confirmed-check { color: var(--blue); }
+
+.add-exercise { position: relative; margin: 16px 0; }
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 5;
+  /* UI Polish Pass (2026-09-18) -- was a plain .hidden display:none toggle
+     with no transition at all, the only exercise-search UI in the app
+     with no fade (the Replace-exercise modal's own list, doing the same
+     job, already animates via the generic modal system). */
+  opacity: 1;
+  transition: opacity var(--motion-fast) var(--motion-ease), display var(--motion-fast) allow-discrete;
+}
+.suggestions.hidden { display: none; opacity: 0; }
+@starting-style {
+  .suggestions:not(.hidden) { opacity: 0; }
+}
+
+.suggestions div {
+  padding: 12px 12px;
+  cursor: pointer;
+  /* UI Polish Pass (2026-09-18) -- was :hover-only (never fires on touch)
+     with no press feedback at all, unlike the Replace-exercise modal's
+     .exercise-row rows doing the identical job with full press feedback. */
+  transition: transform 160ms ease-out, background-color 160ms ease-out;
+}
+
+.suggestions div:hover { background: var(--input-bg); }
+.suggestions div:active { background: var(--input-bg); transform: scale(0.97); }
+
+/* Persistent active-workout bar -- live elapsed time + an always-reachable
+   Finish, matching Strong's own top bar instead of relying only on the
+   button at the bottom of a potentially long exercise list. */
+/* Drag handle for the whole sheet (2026-09-12) -- position:relative +
+   ::before is a small centered grabber pill, the same visual convention
+   iOS/most bottom sheets use to signal "drag this to dismiss" without
+   needing an instruction label. touch-action:none so the browser doesn't
+   also try to scroll/refresh the page underneath a vertical drag gesture
+   started here. */
+.active-bar {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 16px 16px;
+  display: flex;
+  /* was space-between -- with only two children (the timer, Finish), that
+     centered the GAP between them, not the timer itself, so the timer sat
+     wherever "everything left of Finish's own width" happened to land
+     (ImIceTry's ask, 2026-09-18: "the timer isn't centered"). Finish now
+     just sits at the flex end on its own; #active-elapsed (the actual
+     timer digits) is pulled out of flow entirely and centered
+     independently below, so it's centered on the bar's true midpoint
+     regardless of Finish's width. (2026-09-19 fix: the centering had been
+     wrongly applied to .active-bar-left -- the collapse/manual-timer
+     buttons -- instead of #active-elapsed, so the real timer text was
+     left in-flow and got pushed toward Finish on the right, while the
+     collapse button landed dead-center instead. .active-bar-left now
+     stays in normal flow at the left, #active-elapsed gets the centering.) */
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  flex-shrink: 0;
+  position: relative;
+  touch-action: none;
+}
+.active-bar::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.active-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#active-elapsed {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.active-bar-timer-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--text);
+}
+
+.active-bar-finish {
+  background: none;
+  border: none;
+  color: var(--blue);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+

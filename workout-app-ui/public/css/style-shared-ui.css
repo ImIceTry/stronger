@@ -1,0 +1,619 @@
+}
+
+.about-instructions-list {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.about-instructions-list li {
+  margin-bottom: 8px;
+}
+
+.subtle-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 4px 0 12px;
+}
+
+.btn-caps { text-transform: uppercase; letter-spacing: 0.02em; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 16px 0 4px;
+}
+
+.section-header h2 { margin: 0; }
+
+/* The page's own big title: as you scroll, it docks at the very top of the
+   screen (where #topbar used to sit -- #topbar is a fading fixed overlay
+   now, not a reserved bar, see above) and its text shrinks in place -- one
+   element the whole way through, not a second title swapping in. JS drives
+   the shrink via --title-scale as the header approaches its stuck
+   position; see setupCollapsingTitle in app.js. */
+.section-header.page-title {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  background: var(--bg);
+  /* Doubles the resting gap above the title (was 16px here + #app's own
+     16px padding-top = 32px total; this makes it 48+16 = 64px). Scoped to
+     just the big page-title row, not the base .section-header rule shared
+     by in-page sub-headers like "Templates"/"Muscle Map", which stay as
+     they were. setupCollapsingTitle's shrink range is self-calibrated from
+     wherever the header actually rests (see app.js), so it adapts to this
+     automatically -- no JS change needed. */
+  margin-top: 48px;
+}
+
+.section-header.page-title h1 {
+  display: inline-block;
+  transform: scale(var(--title-scale, 1));
+  transform-origin: left center;
+}
+
+.header-icons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-secondary);
+}
+
+.header-icon { width: 20px; height: 20px; }
+/* UI Polish Pass (2026-09-18) -- padding (not a button wrapper: this icon
+   is decorative/inert on purpose, per its own long-standing exclusion)
+   brings its effective box to the same 44px every real icon-button next
+   to it already occupies, so the row's icon spacing reads evenly instead
+   of "one icon has invisible tap-target padding, one doesn't." */
+.crown-icon { stroke: #fccb26; padding: 12px; box-sizing: content-box; }
+
+/* Phase 5.7: 44x44px minimum tap target on every icon-only button, via
+   flex-centered min-width/min-height rather than scaling the icon itself
+   up -- the visible icon (font-size/.header-icon svg) stays exactly the
+   size it already was, only the tappable hit area grows around it. */
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 200ms ease-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.icon-btn-plain {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 200ms ease-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Shared press-state feedback for every button-like control (Phase 5.4) --
+   one rule instead of duplicating :active on each selector above. Extended
+   2026-09-10 ("make it more reactive") to the tappable controls added since:
+   numpad fields, the per-row options link, list-item cards, and a confirmed
+   row's own KG/REPS buttons. The transition lives on the resting-state
+   selector below, not here (2026-09-12) -- :active only ever matches while
+   actually pressed, so a transition declared only inside this rule would
+   ease the press-in but snap back instantly on release; declaring it on
+   the base selector instead animates both directions. */
+.btn-primary,
+.btn-secondary,
+.icon-btn,
+.icon-btn-plain,
+.nav-tab,
+.text-link-btn,
+.cancel-link,
+.list-item,
+.exercise-row,
+.set-row.confirmed button.col-kg,
+.set-row.confirmed button.col-reps,
+/* Added UI Polish Pass (2026-09-18) -- these four previously had only a
+   color-flip :active state (col-set/field-mode-toggle/col-previous turn
+   blue text, confirm-btn turns blue text+border), with no shared scale
+   press-in at all, unlike virtually every other tappable control in the
+   app. Kept their existing color changes (harmless, distinct accents) and
+   layered in the same shared press-in the rest of the app already has,
+   rather than replacing one with the other. (.rest-divider gets the same
+   treatment but can't join this shared list -- see its own file/comment,
+   style-active-workout.css -- since it already owns a multi-property
+   transition that a second rule here would silently clobber.) */
+button.col-set,
+button.col-reps.field-mode-toggle,
+button.col-previous,
+button.confirm-btn {
+  transition: transform 160ms ease-out;
+}
+/* .numpad-field's own transform transition lives with its color/background
+   ones above (2026-09-12) -- a separate rule here would win outright and
+   silently drop those, since transition doesn't merge across rules. */
+.btn-primary:active,
+.btn-secondary:active,
+.icon-btn:active,
+.icon-btn-plain:active,
+.nav-tab:active,
+.text-link-btn:active,
+.cancel-link:active,
+.numpad-field:active,
+.list-item:active,
+.exercise-row:active,
+.set-row.confirmed button.col-kg:active,
+.set-row.confirmed button.col-reps:active,
+button.col-set:active,
+button.col-reps.field-mode-toggle:active,
+button.col-previous:active,
+button.confirm-btn:active {
+  transform: scale(0.96);
+}
+
+.ed-title {
+  font-size: 20px;
+  font-weight: 700;
+  flex: 1;
+  margin-left: 8px;
+}
+
+/* Home screen template grid -- Strong shows a 2-column card grid, not a
+   single-column list, for "repeat a past workout." */
+.template-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* UI Polish Pass (2026-09-18) -- the folder/archived disclosure chevron
+   already animates its own rotation (.archived-templates-toggle below),
+   but the content it reveals popped in/out instantly via the generic
+   .hidden{display:none} rule -- an animated affordance gating
+   non-animated content. Fade only (matching .screen's own established
+   fade-only convention for the same "several things change size/position
+   as content appears" reason), scoped to just these two reveal targets
+   rather than the universal .hidden rule everything else still uses. */
+.template-grid,
+#archived-templates-list {
+  opacity: 1;
+  transition: opacity var(--motion-fast) var(--motion-ease), display var(--motion-fast) allow-discrete;
+}
+.template-grid.hidden,
+#archived-templates-list.hidden {
+  display: none;
+  opacity: 0;
+}
+@starting-style {
+  .template-grid:not(.hidden) { opacity: 0; }
+  #archived-templates-list:not(.hidden) { opacity: 0; }
+}
+
+.template-grid .list-item { margin-bottom: 0; }
+
+/* List view (2026-09-10) -- single column, same cards, just not side by
+   side; toggled from the Templates header's "···" menu, persisted so it
+   survives a reload. */
+.template-grid.list-mode { grid-template-columns: 1fr; }
+
+.template-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.template-card-header .title { font-weight: 700; }
+
+/* .icon-btn's 44px tap target (Phase 5.7) is centered on the glyph, which
+   pushes the visible dots ~12px further in than the card's own 12px padding
+   accounts for -- the button reads as floating away from the corner instead
+   of sitting in it. Pull the invisible hit-box out by exactly that padding
+   so its edge lines up with the card's own edge; the dots land at the same
+   12px inset every other element in the header already uses. The hit-box
+   still extends past the visible card into the 12px grid gap, which is
+   fine -- nothing else sits there to overlap. */
+.template-card-header .icon-btn {
+  margin: -12px -12px 0 0;
+}
+
+/* UI Polish Pass (2026-09-18) -- same pull-in reasoning as the card header
+   rule above (44px hit-box centered on a small glyph reads as floating
+   away from the corner otherwise), but the template-preview's own topbar
+   uses 16px padding (.tpl-preview-topbar), not the card's 12px -- using
+   the card's own -12px value here left the same glyph sitting at a
+   different inset than its card counterpart, even though both are
+   visually the same "..." button. */
+#template-preview-menu-btn {
+  margin: -16px -16px 0 0;
+}
+
+.template-preview {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 8px 0 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.template-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-top: auto; /* UI Polish Pass 2026-09-18 -- pins to the card's bottom edge, see .list-item's own comment */
+  padding-top: 8px;
+}
+
+.template-footer svg { width: 14px; height: 14px; }
+
+.archived-templates { margin-top: 16px; }
+
+.archived-templates-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.archived-templates-toggle .chevron-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 200ms ease-out;
+}
+
+.archived-templates-toggle.expanded .chevron-icon { transform: rotate(180deg); }
+
+.archived-templates .template-grid { margin-top: 8px; }
+
+.profile-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+
+.avatar-row-chevron {
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+}
+
+/* UI Polish Pass (2026-09-18) -- margin-left:auto used to live on the
+   chevron svg above, which only pushed it to the edge of its own 44px
+   button hit-box (#profile-account-btn is display:inline-flex), not to
+   the row's own trailing edge -- unlike every chevron row in Settings,
+   which right-aligns via justify-content:space-between at the row level.
+   Moved here, onto the actual flex child of .profile-avatar-row, so the
+   whole button (and its chevron) sits flush against the screen edge like
+   every other chevron in the app. */
+#profile-account-btn {
+  margin-left: auto;
+}
+
+.settings-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin: 24px 0 8px;
+}
+
+.settings-section-title:first-of-type { margin-top: 8px; }
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-row-clickable { cursor: pointer; }
+
+.settings-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-row-hint {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.settings-row-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.settings-row-chevron {
+  width: 18px;
+  height: 18px;
+}
+
+/* Simple iOS-style pill toggle -- a real checkbox underneath (keyboard/
+   screen-reader accessible, and settings.js just reads/writes .checked)
+   visually hidden behind a styled track+thumb sibling. */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.toggle-track {
+  /* The real <input> sits underneath this decorative span (same stacking
+     order in the DOM), so without this it -- not the input -- is what
+     actually receives the tap, relying on browser label-forwarding to
+     still reach the checkbox. That's true in most desktop browsers but not
+     safe to assume inside the Capacitor Android WebView this app also runs
+     in -- pointer-events: none routes every tap straight to the input
+     itself, no forwarding required. */
+  position: absolute;
+  inset: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  transition: background-color 150ms ease-out;
+  pointer-events: none;
+}
+
+.toggle-track::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: transform 150ms ease-out, background-color 150ms ease-out;
+}
+
+.toggle-switch input:checked + .toggle-track { background: var(--blue); border-color: var(--blue); }
+.toggle-switch input:checked + .toggle-track::before { transform: translateX(18px); background: #fff; }
+
+.avatar-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.avatar-circle svg { width: 26px; height: 26px; }
+.avatar-label { font-weight: 700; }
+
+/* Muscle map (Profile tab) -- a stylized, geometric body diagram, not a
+   traced anatomical illustration. Colors come entirely from
+   muscleScoreColor() in muscle-map.js at render time (inline fill= on each
+   path), not from CSS, since they're computed per muscle group. */
+.muscle-map-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.muscle-map-toggle-btn {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 200ms ease-out;
+}
+
+.muscle-map-toggle-btn.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+.muscle-map-body {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.muscle-map-svg {
+  width: 100%;
+  /* Wider than before (was 260px) -- the viewBox itself grew to add open
+     margins on both sides for the progress-label callouts (2026-09-15),
+     so the box needs more room or the body silhouette would just shrink
+     to make space for them. */
+  max-width: 380px;
+  height: auto;
+}
+
+.muscle-region {
+  cursor: pointer;
+  transition: opacity 200ms ease-out;
+}
+
+.muscle-region:active {
+  opacity: 0.7;
+}
+
+.muscle-map-progress-label {
+  /* SVG <text> doesn't reliably inherit the page's font-family across
+     browsers/webviews the way HTML text does -- explicit inherit (2026-09-15,
+     ImIceTry's ask) instead of leaving it to fall back to the SVG UA default. */
+  font-family: inherit;
+  fill: var(--text);
+  font-size: 2.4px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.muscle-map-progress-muscle-label {
+  /* Same muted gray as the tap-through detail panel's own stat rows
+     (.muscle-map-detail-row, .meta) -- reads as a caption above the
+     percentage, not another value (2026-09-16, ImIceTry's ask). */
+  font-family: inherit;
+  fill: var(--text-secondary);
+  font-size: 1.6px;
+  font-weight: 400;
+  text-transform: capitalize;
+  pointer-events: none;
+}
+
+.muscle-map-detail {
+  margin-top: 12px;
+}
+
+.muscle-map-detail:empty {
+  margin-top: 0;
+}
+
+.muscle-map-detail-title {
+  font-weight: 700;
+  text-transform: capitalize;
+  margin-bottom: 8px;
+}
+
+.muscle-map-detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.muscle-map-detail-subhead {
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+
+/* Sets This Week (2026-09-30) -- Profile tab, under the muscle map. Track is
+   scaled to 20 sets; the ::after tick marks 10, the low end of the range. */
+.weekly-sets-caption {
+  margin-bottom: 8px;
+}
+
+.weekly-sets-row {
+  display: grid;
+  grid-template-columns: 96px 1fr 36px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 14px;
+}
+
+.weekly-sets-name {
+  text-transform: capitalize;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weekly-sets-track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--input-bg);
+  overflow: hidden;
+}
+
+.weekly-sets-track::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+.weekly-sets-fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.weekly-sets-fill.low { background: #d9953a; }
+.weekly-sets-fill.ok { background: var(--green); }
+.weekly-sets-fill.high { background: var(--blue); }
+
+.weekly-sets-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.weekly-sets-value.low { color: #d9953a; }
+.weekly-sets-value.ok { color: var(--green-light); }
+.weekly-sets-value.high { color: var(--blue); }
+
+.next-up-card {
+  background: var(--bg-elevated);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 12px 0 4px;
+}
+.next-up-title { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+.next-up-actions { display: flex; gap: 8px; margin: 10px 0 4px; }
+.next-up-planned {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 14px; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.next-up-remove { font-size: 20px; }

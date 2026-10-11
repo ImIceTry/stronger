@@ -1,0 +1,257 @@
+/* Exercises tab -- avatar on the left, name + category subtitle stacked
+   to its right, matching Strong's layout. We have no real exercise
+   illustrations, so every row uses the same initial-letter fallback
+   Strong itself falls back to for exercises without one (e.g. its "A"/"D"
+   circles), rather than pretending to have real thumbnails. */
+.exercise-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.exercise-row.disabled { color: var(--text-secondary); cursor: default; opacity: 0.6; }
+
+.ex-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.ex-row-main { display: flex; flex-direction: column; }
+.exercise-row .ex-name { font-weight: 600; }
+.exercise-row .ex-category { color: var(--text-secondary); font-size: 12px; margin-top: 4px; }
+
+/* How many times ImIceTry has actually performed this exercise (2026-09-15) --
+   pinned to the row's own far corner via margin-left: auto rather than a
+   third flex column, since ex-row-main already varies in width with the
+   category subtitle. Only ever rendered when > 0 (see renderExercisesList),
+   so the ~870 never-logged library exercises don't show a meaningless "0×". */
+.ex-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Reuses the one red already in the palette (the Failure set-type badge)
+   rather than introducing a second red -- a destructive action getting its
+   own new color would read as more/different severity than intended. */
+.exercise-row.template-row-danger,
+.side-panel-row.template-row-danger { color: #e0503c; } /* side-panel-row added UI Polish Pass 2026-09-18, item 3 migration */
+
+.folder-list-row { justify-content: space-between; }
+.folder-list-name { flex: 1; }
+.folder-list-delete {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  /* UI Polish Pass (2026-09-18) -- was 4px/8px padding only (a smaller tap
+     target than every other icon button's 44px minimum) and had no scale
+     press-in, just the color change below -- now matches both. */
+  min-width: 44px;
+  min-height: 44px;
+  transition: transform 160ms ease-out;
+}
+.folder-list-delete:active { color: #e0503c; transform: scale(0.96); }
+.exercise-alpha-header {
+  color: var(--text);
+  font-weight: 700;
+  font-size: 20px;
+  margin: 16px 0 8px;
+}
+
+/* Exercise detail page */
+.ed-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ed-tab {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  /* UI Polish Pass (2026-09-18) -- the underline used to snap instantly
+     between tabs; now eases the same way every other state-change color/
+     border transition in the app already does. */
+  transition: color var(--motion-fast) var(--motion-ease), border-bottom-color var(--motion-fast) var(--motion-ease);
+}
+
+.ed-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+/* Fade only (matches .screen's own fade-only convention for the same
+   reason: About/History/Charts/Records swap their entire content on tab
+   change, so a slide/transform would have nothing coherent to move
+   relative to -- see .screen's own comment in style-base.css). Was a
+   hard display:none/block cut with no transition at all. */
+.ed-panel {
+  opacity: 1;
+  transition: opacity var(--motion-fast) var(--motion-ease), display var(--motion-fast) allow-discrete;
+}
+.ed-panel.hidden { display: none; opacity: 0; }
+@starting-style {
+  .ed-panel:not(.hidden) { opacity: 0; }
+}
+
+.records-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.records-row .label { color: var(--text-secondary); }
+.records-row .value { font-weight: 700; }
+
+.reps-table-header, .reps-table-row {
+  display: grid;
+  grid-template-columns: 0.6fr 1.4fr 1fr;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.reps-table-header {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.chart-stub-note {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-style: italic;
+  margin-top: 12px;
+}
+
+.chart-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  padding: 16px;
+  /* UI Polish Pass (2026-09-18) -- was 12px, while the History tab's own
+     card (.detail.ed-history-card) used 16px padding/12px margin -- two
+     near-identical "card" components with their two values simply
+     swapped. Unified both to 16px/16px (the more generous of the two)
+     rather than picking arbitrarily. */
+  margin-bottom: 16px;
+}
+
+.chart-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+}
+
+.chart-card-value {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+
+/* Per-exercise trend charts (2026-09-17, Function Expansion Plan item 1.4) --
+   client-side SVG, not Grafana (see loadExerciseChartsTab's own comment on
+   why). width: 100% + preserveAspectRatio="none" on the <svg> itself lets a
+   fixed 300x110 viewBox stretch to whatever the actual card width is on a
+   real phone, rather than a wasted fixed-width chart on wider screens. */
+.chart-body { margin-top: 8px; }
+.trend-chart { width: 100%; height: 110px; display: block; }
+.trend-chart-range {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* Embedded Grafana panels (Phase 6 follow-on). Was a fixed-height <iframe>
+   (reflows to whatever box it's given, so a fixed height always worked);
+   now a static <img> (2026-09-14, see loadGrafanaSnapshots in app.js), and
+   a fixed height on a real image inevitably mismatches actual phone widths
+   -- tried object-fit: contain (looked like a shrunk photo in an oversized
+   frame) and cover (cropped title/legend on some phones, chart lines on
+   others, since real device width varies more than guessed). height: auto
+   sidesteps guessing entirely -- the box just takes whatever height the
+   image's own aspect ratio needs at 100% width, so nothing is ever cropped
+   or padded on any screen. */
+.grafana-embed {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg-elevated);
+  border: none;
+  border-radius: 8px;
+}
+
+/* Strong-parity chrome: section headers with inert icon rows, matching their
+   real layout even where we don't have (or need yet) the feature behind an
+   icon -- e.g. filter/sort/crown on Exercises, gear/crown on Profile. */
+.section-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 4px 0 8px;
+}
+
+.about-muscle-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.about-muscle-chip {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+/* Secondary movers read as real but lower-stakes, same "not a 4th saturated
+   color" discipline as warmup/unilateral elsewhere in this app. */
+.about-muscle-chip.secondary {
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+/* Fullscreen graph viewer (Statistics tab) */
+img.grafana-embed { cursor: pointer; }
+.graph-viewer { position: fixed; inset: 0; z-index: 40; background: var(--bg, #000); display: flex; flex-direction: column; }
+.graph-viewer-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); }
+.graph-viewer-close { background: none; border: none; color: var(--text); font-size: 30px; line-height: 1; padding: 0 8px; }
+.graph-viewer-hint { color: var(--text-secondary); font-size: 12px; }
+.graph-viewer-zoom { flex: 1; overflow: hidden; touch-action: none; }
+.graph-viewer-zoom img { width: 100%; height: auto; transform-origin: 0 0; user-select: none; -webkit-user-drag: none; }
+.graph-viewer-frame { flex: 1; width: 100%; border: none; background: var(--bg-elevated); }
+.graph-viewer .range-btn { background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border, #2d3748); border-radius: 14px; padding: 6px 12px; font-size: 13px; white-space: nowrap; margin-left: auto; }
+.graph-viewer-ranges { flex: 1; display: flex; gap: 6px; overflow-x: auto; align-items: center; }
+.graph-viewer .range-btn.active { background: var(--accent, #3b82f6); border-color: transparent; color: #fff; }
+.graph-viewer-mode { margin-left: 0 !important; }
