@@ -12,6 +12,7 @@
 const ANOMALY_DROP_THRESHOLD = 0.65; // below 65% of the recent bilateral baseline
 
 function checkForLogAnomaly(exerciseName, set) {
+  if (!featureEnabled("anomalyHint")) return;
   if (set.weight_kg == null) return; // reps-only/time exercises have no weight to compare
   if (set.unilateral || set.set_type !== "normal") return; // already self-explained -- don't nag
   const prev = previousPerformanceCache[exerciseName];
@@ -125,6 +126,7 @@ function computePriorBestForLane(sessions, unilateral) {
 }
 
 async function checkForPr(exerciseName, set) {
+  if (!featureEnabled("prToast")) return;
   if (set.weight_kg == null || set.reps == null || set.set_type === "failure" || set.set_type === "warmup" || set.set_type === "assisted") return;
   // Earlier sets of this same workout are prior bests too (2026-09-30), the
   // way flag_session_prs' oldest-first walk treats them -- without this,

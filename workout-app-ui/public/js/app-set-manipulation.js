@@ -1,4 +1,4 @@
-// ---------- set-manipulation core: shift positions, set-type toggle, unilateral/side toggle, warm-up ramp, field-mode picker (moved from app.js, 2026-09-17) ----------
+// ---------- set-manipulation core: shift positions, set-type toggle, unilateral toggle, warm-up ramp, field-mode picker (moved from app.js, 2026-09-17) ----------
 
 // Shifts every position strictly after afterIndex by delta (+1 to open a
 // gap, -1 to close one) across every per-exercise state keyed by position:
@@ -223,21 +223,6 @@ function toggleUnilateral(exerciseName, index) {
   renderActiveScreen();
 }
 
-// Optional refinement of an already-unilateral set (2026-09-17, Function
-// Expansion Plan item 3.1) -- picking a side always implies unilateral (a
-// side without it makes no sense), same as Warm-up/Drop implying set_type.
-// Tapping the already-active side clears it back to "unspecified" rather
-// than forcing a choice, matching toggleSetType's own "tap again to undo"
-// convention -- most sets should cost zero extra taps here.
-function toggleSide(exerciseName, index, side) {
-  if (!pendingUnilateralByExercise[exerciseName]) pendingUnilateralByExercise[exerciseName] = {};
-  pendingUnilateralByExercise[exerciseName][index] = true;
-  if (!pendingSideByExercise[exerciseName]) pendingSideByExercise[exerciseName] = {};
-  const current = pendingSideByExercise[exerciseName][index];
-  pendingSideByExercise[exerciseName][index] = current === side ? null : side;
-  renderActiveScreen();
-}
-
 // Reached by tapping the set number itself now (2026-09-10), not a
 // separate "Set options" link -- RPE moved entirely into the numpad's own
 // reps step (items 19/20), so this is just Normal/Warm-up/Drop/Failure.
@@ -285,31 +270,39 @@ function promptAssistedReps(currentValue) {
   });
 }
 
+// Tag buttons for the set-type panel. A tag type that is switched off is left
+// out unless the set already carries it, so existing data can still be cleared.
+function setTypeButtonsHtml(currentType, isUnilateral) {
+  const btn = (feature, cls, label, type, active) =>
+    (featureEnabled(feature) || active) ? `<button class="${cls}-btn ${active ? `active ${type}` : ""}">${label}</button>` : "";
+  return [
+    btn("setWarmup", "warmup", "Warm-up", "warmup", currentType === "warmup"),
+    btn("setDrop", "drop", "Drop", "drop", currentType === "drop"),
+    btn("setAssisted", "assisted", "Assisted", "assisted", currentType === "assisted"),
+    btn("unilateral", "unilateral", "Unilateral", "unilateral", isUnilateral),
+  ].join("");
+}
+
+function onPanelButton(selector, handler) {
+  const el = dockedPanel.querySelector(selector);
+  if (el) el.addEventListener("click", handler);
+}
+
 function openSetTypePicker(exerciseName, index, totalPositions) {
   const currentType = (pendingSetTypeByExercise[exerciseName] || {})[index] || "normal";
   const isUnilateral = isPositionUnilateral(exerciseName, index);
-  const currentSide = (pendingSideByExercise[exerciseName] || {})[index] || null;
   openDockedPanel(`
-    <div class="set-type-toggle row-options-panel">
-      <button class="warmup-btn ${currentType === "warmup" ? "active warmup" : ""}">Warm-up</button>
-      <button class="drop-btn ${currentType === "drop" ? "active drop" : ""}">Drop</button>
-      <button class="assisted-btn ${currentType === "assisted" ? "active assisted" : ""}">Assisted</button>
-      <button class="unilateral-btn ${isUnilateral ? "active unilateral" : ""}">Unilateral</button>
-    </div>
-    <div class="set-type-toggle row-options-panel">
-      <button class="side-left-btn ${currentSide === "left" ? "active unilateral" : ""}">Left</button>
-      <button class="side-right-btn ${currentSide === "right" ? "active unilateral" : ""}">Right</button>
-    </div>
+    <div class="set-type-toggle row-options-panel">${setTypeButtonsHtml(currentType, isUnilateral)}</div>
   `, () => closeDockedPanel());
-  dockedPanel.querySelector(".warmup-btn").addEventListener("click", () => {
+  onPanelButton(".warmup-btn", () => {
     toggleSetType(exerciseName, index, "warmup");
     closeDockedPanel();
   });
-  dockedPanel.querySelector(".drop-btn").addEventListener("click", () => {
+  onPanelButton(".drop-btn", () => {
     toggleSetType(exerciseName, index, "drop", totalPositions);
     closeDockedPanel();
   });
-  dockedPanel.querySelector(".assisted-btn").addEventListener("click", async () => {
+  onPanelButton(".assisted-btn", async () => {
     const turningOn = currentType !== "assisted";
     if (turningOn) {
       // Deliberately does NOT close the docked panel before this -- the
@@ -330,16 +323,8 @@ function openSetTypePicker(exerciseName, index, totalPositions) {
       closeDockedPanel();
     }
   });
-  dockedPanel.querySelector(".unilateral-btn").addEventListener("click", () => {
+  onPanelButton(".unilateral-btn", () => {
     toggleUnilateral(exerciseName, index);
-    closeDockedPanel();
-  });
-  dockedPanel.querySelector(".side-left-btn").addEventListener("click", () => {
-    toggleSide(exerciseName, index, "left");
-    closeDockedPanel();
-  });
-  dockedPanel.querySelector(".side-right-btn").addEventListener("click", () => {
-    toggleSide(exerciseName, index, "right");
     closeDockedPanel();
   });
 }
@@ -365,16 +350,7 @@ function openSetTypePickerForConfirmedSet(exerciseName, setOrder) {
   if (!set) return;
   const currentType = set.set_type || "normal";
   openDockedPanel(`
-    <div class="set-type-toggle row-options-panel">
-      <button class="warmup-btn ${currentType === "warmup" ? "active warmup" : ""}">Warm-up</button>
-      <button class="drop-btn ${currentType === "drop" ? "active drop" : ""}">Drop</button>
-      <button class="assisted-btn ${currentType === "assisted" ? "active assisted" : ""}">Assisted</button>
-      <button class="unilateral-btn ${set.unilateral ? "active unilateral" : ""}">Unilateral</button>
-    </div>
-    <div class="set-type-toggle row-options-panel">
-      <button class="side-left-btn ${set.side === "left" ? "active unilateral" : ""}">Left</button>
-      <button class="side-right-btn ${set.side === "right" ? "active unilateral" : ""}">Right</button>
-    </div>
+    <div class="set-type-toggle row-options-panel">${setTypeButtonsHtml(currentType, !!set.unilateral)}</div>
   `, () => closeDockedPanel());
   const commit = () => {
     persistActiveWorkout();
@@ -386,9 +362,9 @@ function openSetTypePickerForConfirmedSet(exerciseName, setOrder) {
     if (set.set_type !== "assisted") set.assisted_reps = null;
     commit();
   };
-  dockedPanel.querySelector(".warmup-btn").addEventListener("click", () => setType("warmup"));
-  dockedPanel.querySelector(".drop-btn").addEventListener("click", () => setType("drop"));
-  dockedPanel.querySelector(".assisted-btn").addEventListener("click", async () => {
+  onPanelButton(".warmup-btn", () => setType("warmup"));
+  onPanelButton(".drop-btn", () => setType("drop"));
+  onPanelButton(".assisted-btn", async () => {
     const turningOn = set.set_type !== "assisted";
     if (turningOn) {
       // Doesn't close the docked panel before this -- see openSetTypePicker's
@@ -403,21 +379,11 @@ function openSetTypePickerForConfirmedSet(exerciseName, setOrder) {
       setType("assisted");
     }
   });
-  dockedPanel.querySelector(".unilateral-btn").addEventListener("click", () => {
+  onPanelButton(".unilateral-btn", () => {
     set.unilateral = !set.unilateral;
     // A side only ever means something on a unilateral set -- same
     // convention toggleUnilateral already uses for a pending row.
     if (!set.unilateral) set.side = null;
-    commit();
-  });
-  dockedPanel.querySelector(".side-left-btn").addEventListener("click", () => {
-    set.unilateral = true; // picking a side always implies unilateral, same as toggleSide
-    set.side = set.side === "left" ? null : "left";
-    commit();
-  });
-  dockedPanel.querySelector(".side-right-btn").addEventListener("click", () => {
-    set.unilateral = true;
-    set.side = set.side === "right" ? null : "right";
     commit();
   });
 }

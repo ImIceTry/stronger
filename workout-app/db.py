@@ -156,10 +156,11 @@ _MIGRATIONS = [
     # specified," not "the default machine" -- most exercises only ever have
     # one, so most sets will never set this.
     ("sets", "variant", "TEXT"),
-    # Which limb did the work on a unilateral set (2026-09-17, Function
-    # Expansion Plan item 3.1). 'left'/'right'/NULL -- NULL is the default
-    # and means "unspecified" (both sides logged with the same numbers, or
-    # simply not tracked at this granularity), not "neither side." Only
+    # Which side a unilateral set STARTED on (2026-10-14; originally "which
+    # limb did the work", 2026-09-17, Function Expansion Plan item 3.1 --
+    # that was never used, every row was NULL, so no data was reinterpreted).
+    # 'left'/'right'/NULL -- NULL is the default and means "unspecified",
+    # not "neither side". Both sides are always trained. Only
     # meaningful when unilateral=1; a bilateral set's side is always NULL.
     # Kept separate from `unilateral` itself (rather than replacing the
     # boolean with a 3-value side field) so every existing unilateral query
@@ -454,13 +455,12 @@ def get_all_variant_ratios(conn, exercise_name):
 
 
 def set_variant_ratio(conn, exercise_name, variant, ratio):
-    """ratio=None or 1.0 deletes the row rather than storing a no-op entry
-    -- keeps the table to only the variants that actually need an
-    adjustment, and means a set logged under a variant with no row here
-    correctly falls back to weight_ratio=1.0 with no lookup miss to handle
-    specially."""
+    """ratio=None deletes the row. Any number, 1.0 included, is stored, so a
+    named machine with a normal 1:1 stack stays in the exercise's saved
+    machine list (2026-10-14, ImIceTry's ask). A set logged under a variant
+    with no row here still falls back to weight_ratio=1.0."""
     exercise_id = get_or_create_exercise(conn, exercise_name)
-    if ratio is None or ratio == 1.0:
+    if ratio is None:
         conn.execute(
             "DELETE FROM exercise_variant_ratios WHERE exercise_id = ? AND variant = ?",
             (exercise_id, variant),

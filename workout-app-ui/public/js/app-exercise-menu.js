@@ -53,6 +53,7 @@ const EXERCISE_MENU_ICONS = {
   // Half-filled circle -- a standard "split/half" glyph, reused here for
   // "which side" rather than drawing a literal split body at 20px.
   unilateral: `<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>`,
+  startSide: `<path d="M3 12h18"/><path d="m7 8-4 4 4 4"/><path d="m17 8 4 4-4 4"/>`,
   restTimer: `<path d="M9 2h6"/><path d="M12 2v3"/><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/>`,
   machineSettings: `<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>`,
   machineVariant: `<path d="M17 3 21 7l-4 4"/><path d="M21 7H3"/><path d="M7 21 3 17l4-4"/><path d="M3 17h18"/>`,
@@ -100,21 +101,51 @@ async function toggleDefaultUnilateral(exerciseName) {
   }
 }
 
+// Exercise-wide "start with" side (2026-10-14): Not set -> Left -> Right ->
+// Not set. Every unilateral set of this exercise logged from now on uses it,
+// and unilateral sets already logged this workout are updated to match.
+function startSideMenuLabel(exerciseName, isDefaultUnilateral) {
+  const side = (activeWorkout.startSideByExercise || {})[exerciseName];
+  const state = side === "left" ? "Left first" : side === "right" ? "Right first" : "Not set";
+  const hint = isDefaultUnilateral === false ? "unilateral sets only" : "tap to change";
+  return `Start side: ${state} (${hint})`;
+}
+
+// swapOnly (the card chip): Left <-> Right without passing through Not set.
+function cycleStartSide(exerciseName, swapOnly = false) {
+  if (!activeWorkout.startSideByExercise) activeWorkout.startSideByExercise = {};
+  const current = activeWorkout.startSideByExercise[exerciseName];
+  const next = current === "left" ? "right" : current === "right" ? (swapOnly ? "left" : null) : "left";
+  activeWorkout.startSideByExercise[exerciseName] = next;
+  activeWorkout.sets.forEach((s) => {
+    if (s.exercise_name === exerciseName && s.unilateral) s.side = next;
+  });
+  persistActiveWorkout();
+  renderActiveScreen();
+}
+
 async function openExerciseOptionsMenu(exerciseName) {
   const hasNote = !!(activeWorkout.exerciseNotes && activeWorkout.exerciseNotes[exerciseName]);
   const hasVariant = !!(activeWorkout.variantByExercise && activeWorkout.variantByExercise[exerciseName]);
-  openSidePanel(exerciseName, [
-    sidePanelRow("add-note", "note", hasNote ? "Edit note" : "Add note"),
-    sidePanelRow("sticky-note", "stickyNote", "Loading sticky note&hellip;"),
-    sidePanelRow("default-unilateral", "unilateral", "Loading&hellip;"),
-    sidePanelRow("rest-timer", "restTimer", "Update rest timer"),
-    sidePanelRow("machine-variant", "machineVariant", hasVariant ? "Change machine/variant" : "Set machine/variant"),
-    sidePanelRow("machine-settings", "machineSettings", "Machine settings"),
-    sidePanelRow("replace", "replace", "Replace exercise"),
-    sidePanelRow("superset", "superset", "Create superset"),
-    sidePanelRow("remove", "remove", "Remove exercise"),
-  ].join(""));
-  sidePanel.querySelector('[data-action="add-note"]').addEventListener("click", () => {
+  const rows = [
+    ["exerciseNotes", sidePanelRow("add-note", "note", hasNote ? "Edit note" : "Add note")],
+    ["stickyNotes", sidePanelRow("sticky-note", "stickyNote", "Loading sticky note&hellip;")],
+    ["unilateral", sidePanelRow("default-unilateral", "unilateral", "Loading&hellip;")],
+    ["startSide", sidePanelRow("start-side", "startSide", startSideMenuLabel(exerciseName))],
+    ["restTimer", sidePanelRow("rest-timer", "restTimer", "Update rest timer")],
+    ["machineVariant", sidePanelRow("machine-variant", "machineVariant", hasVariant ? "Change machine/variant" : "Set machine/variant")],
+    ["machineSettings", sidePanelRow("machine-settings", "machineSettings", "Machine settings")],
+    ["replaceExercise", sidePanelRow("replace", "replace", "Replace exercise")],
+    ["supersets", sidePanelRow("superset", "superset", "Create superset")],
+    [null, sidePanelRow("remove", "remove", "Remove exercise")],
+  ];
+  openSidePanel(exerciseName, rows.filter(([feature]) => feature == null || featureEnabled(feature)).map(([, html]) => html).join(""));
+  const rowEl = (action) => sidePanel.querySelector(`[data-action="${action}"]`);
+  const onRow = (action, handler) => {
+    const el = rowEl(action);
+    if (el) el.addEventListener("click", handler);
+  };
+  onRow("add-note", () => {
     // closeSidePanel() directly, not closeTopNavLayer() -- this closes the
     // panel and opens a new modal in the same gesture, and closeTopNavLayer's
     // history.back() doesn't resolve synchronously (it's async via popstate,
@@ -128,30 +159,36 @@ async function openExerciseOptionsMenu(exerciseName) {
     closeSidePanel();
     openAddNoteModal(exerciseName);
   });
-  sidePanel.querySelector('[data-action="machine-variant"]').addEventListener("click", () => {
+  const startSideRow = rowEl("start-side");
+  let knownDefaultUnilateral; // filled in once the fetch below resolves
+  onRow("start-side", () => {
+    cycleStartSide(exerciseName);
+    startSideRow.querySelector(".side-panel-row-label").textContent = startSideMenuLabel(exerciseName, knownDefaultUnilateral);
+  });
+  onRow("machine-variant", () => {
     closeSidePanel(); // see add-note's own comment just above -- same bug, same fix
     openMachineVariantModal(exerciseName);
   });
-  sidePanel.querySelector('[data-action="machine-settings"]').addEventListener("click", () => {
+  onRow("machine-settings", () => {
     closeSidePanel();
     openMachineSettingsModal(exerciseName);
   });
-  sidePanel.querySelector('[data-action="rest-timer"]').addEventListener("click", () => {
+  onRow("rest-timer", () => {
     closeSidePanel(); // see add-note's own comment above -- same bug, same fix
     openRestTimerModal(exerciseName);
   });
-  sidePanel.querySelector('[data-action="replace"]').addEventListener("click", () => {
+  onRow("replace", () => {
     closeSidePanel(); // see add-note's own comment above -- same bug, same fix
     startReplaceExercise(exerciseName);
   });
-  sidePanel.querySelector('[data-action="superset"]').addEventListener("click", () => {
+  onRow("superset", () => {
     // Deliberately the exact same function the link-icon button already
     // calls -- this menu item is wiring only, not a second implementation
     // of superset creation (the plan's own instruction: don't duplicate it).
     closeSidePanel();
     openSupersetPicker(exerciseName);
   });
-  sidePanel.querySelector('[data-action="remove"]').addEventListener("click", () => {
+  onRow("remove", () => {
     // Real bug fixed here (2026-09-22 report: "remove exercise button not
     // working"). removeExerciseFromWorkout awaits showConfirmDialog, which
     // pushes its own nav layer synchronously -- but closeTopNavLayer's
@@ -171,27 +208,32 @@ async function openExerciseOptionsMenu(exerciseName) {
   // the this-workout-only note above) -- shares the same cache/fetch path
   // the exercise card's variant bar uses (Phase 1.9), so the menu label and
   // the card never disagree about current state.
-  const stickyRow = sidePanel.querySelector('[data-action="sticky-note"]');
-  const currentSticky = await fetchStickyNote(exerciseName);
-  if (!sidePanel.contains(stickyRow)) return; // menu closed while the fetch was in flight
-  stickyRow.querySelector(".side-panel-row-label").textContent = currentSticky ? "Edit sticky note" : "Add sticky note";
-  stickyRow.addEventListener("click", () => {
-    // Missed in the 2026-09-18 pass that added this same closeSidePanel()
-    // call to add-note/machine-variant -- this row opens a modal in the
-    // same gesture too, so it needs the synchronous close for the same
-    // reason (see add-note's own comment above). Confirmed live 2026-09-19:
-    // without it, the panel stayed visible behind the sticky-note modal.
-    closeSidePanel();
-    openStickyNoteModal(exerciseName, currentSticky);
-  });
+  const stickyRow = rowEl("sticky-note");
+  if (stickyRow) {
+    const currentSticky = await fetchStickyNote(exerciseName);
+    if (!sidePanel.contains(stickyRow)) return; // menu closed while the fetch was in flight
+    stickyRow.querySelector(".side-panel-row-label").textContent = currentSticky ? "Edit sticky note" : "Add sticky note";
+    stickyRow.addEventListener("click", () => {
+      // Missed in the 2026-09-18 pass that added this same closeSidePanel()
+      // call to add-note/machine-variant -- this row opens a modal in the
+      // same gesture too, so it needs the synchronous close for the same
+      // reason (see add-note's own comment above). Confirmed live 2026-09-19:
+      // without it, the panel stayed visible behind the sticky-note modal.
+      closeSidePanel();
+      openStickyNoteModal(exerciseName, currentSticky);
+    });
+  }
 
   // Exercise-level "always unilateral" default (2026-09-17, item 1.3) --
   // same lazy-fetch-then-fill pattern as the sticky note row above, since
   // this is also server-side/persists-across-workouts state, not
   // workout-local like activeWorkout.variantByExercise.
-  const unilateralRow = sidePanel.querySelector('[data-action="default-unilateral"]');
+  const unilateralRow = rowEl("default-unilateral");
+  if (!unilateralRow) return;
   const isDefaultUnilateral = await fetchDefaultUnilateral(exerciseName);
   if (!sidePanel.contains(unilateralRow)) return; // menu closed while the fetch was in flight
+  knownDefaultUnilateral = isDefaultUnilateral;
+  if (startSideRow) startSideRow.querySelector(".side-panel-row-label").textContent = startSideMenuLabel(exerciseName, isDefaultUnilateral);
   unilateralRow.querySelector(".side-panel-row-label").textContent = isDefaultUnilateral ? "Always unilateral: On (tap to turn off)" : "Always unilateral: Off (tap to turn on)";
   unilateralRow.addEventListener("click", async () => {
     if (!(await toggleDefaultUnilateral(exerciseName))) return;
@@ -262,17 +304,21 @@ function openWorkoutNotesModal() {
 function openActiveWorkoutMenu() {
   const hasNotes = !!(activeWorkout.workoutNotes && activeWorkout.workoutNotes.trim());
   openModal(`
-    <div class="exercise-row" data-action="workout-notes">${hasNotes ? "Edit workout notes" : "Add workout notes"}</div>
-    <div class="exercise-row" data-action="reorder">Reorder exercises</div>
+    ${featureEnabled("workoutNotes") ? `<div class="exercise-row" data-action="workout-notes">${hasNotes ? "Edit workout notes" : "Add workout notes"}</div>` : ""}
+    ${featureEnabled("reorder") ? `<div class="exercise-row" data-action="reorder">Reorder exercises</div>` : ""}
   `);
-  modalContent.querySelector('[data-action="workout-notes"]').addEventListener("click", () => {
+  const menuRow = (action, handler) => {
+    const el = modalContent.querySelector(`[data-action="${action}"]`);
+    if (el) el.addEventListener("click", handler);
+  };
+  menuRow("workout-notes", () => {
     // closeModal() (sync), not closeTopNavLayer() (async history.back()) --
     // chains straight into another openModal() call; see openMachineVariantModal's
     // own call site (item 1.2) for the exact same bug found and fixed today.
     closeModal();
     openWorkoutNotesModal();
   });
-  modalContent.querySelector('[data-action="reorder"]').addEventListener("click", () => {
+  menuRow("reorder", () => {
     closeTopNavLayer();
     enterReorderMode();
   });
@@ -317,6 +363,21 @@ function openStickyNoteModal(exerciseName, currentSticky) {
 // occurrence (see fetchPreviousPerformance's .then), not from a separately
 // stored default. Clearing it here just means "not specified" for the rest
 // of this workout, same as an exercise that never had one set.
+// Past machine/variant names for the quick-pick chips: every variant ever
+// logged on this exercise (newest first, from its history), plus any that
+// only have a saved ratio or machine settings. Failures just mean no chips.
+async function knownVariantsFor(exerciseName, ratios) {
+  const names = [];
+  const add = (v) => { if (v && !names.includes(v)) names.push(v); };
+  try {
+    const data = await apiGet(`/api/exercises/${encodeURIComponent(exerciseName)}/history`);
+    (data.sessions || []).forEach((s) => s.sets.forEach((st) => add(st.variant)));
+  } catch (err) { /* offline or no history yet */ }
+  Object.keys(ratios).forEach(add);
+  Object.keys(await fetchMachineSettings(exerciseName)).forEach(add);
+  return names;
+}
+
 async function openMachineVariantModal(exerciseName) {
   const current = (activeWorkout.variantByExercise || {})[exerciseName] || "";
   // Effective-weight ratio (2026-09-17) -- some machines display a stack/
@@ -329,7 +390,8 @@ async function openMachineVariantModal(exerciseName) {
   const currentRatio = current && ratios[current] != null ? ratios[current] : "";
   openModal(`
     <h3>Machine / variant &mdash; ${escapeHtml(exerciseName)}</h3>
-    <p class="modal-hint">Applies to every set of this exercise for the rest of this workout. Carries forward to your next session automatically.</p>
+    <p class="modal-hint">Applies to every set of this exercise for the rest of this workout and is saved with its factor for this exercise, so you can switch between machines with one tap. No machine = factor 1.</p>
+    <div id="machine-variant-chips" class="machine-variant-chips"></div>
     <input id="machine-variant-input" type="text" class="exercise-note-input" placeholder="e.g. old machine, 4-pulley, plate-loaded" value="${escapeHtml(current)}">
     <p class="modal-hint">Effective weight ratio -- only if this machine's own displayed number isn't the real resistance (e.g. 0.25 for a 4:1-pulley machine reading 4x the true load). Leave blank for a normal 1:1 machine. The number you log stays exactly what's on the machine; only PRs/1RM/volume use the adjusted value.</p>
     <input id="machine-variant-ratio" type="number" step="0.01" min="0.01" max="100" class="exercise-note-input" placeholder="e.g. 0.25" value="${currentRatio}">
@@ -343,6 +405,41 @@ async function openMachineVariantModal(exerciseName) {
   modalContent.classList.add("size-compact");
   const input = modalContent.querySelector("#machine-variant-input");
   const ratioInput = modalContent.querySelector("#machine-variant-ratio");
+  const chipBox = modalContent.querySelector("#machine-variant-chips");
+  let knownVariants = [];
+  let ratioTouched = false;
+  // The leading "None" chip is the unnamed machine (no tag), so switching
+  // back to it never needs the text field.
+  const paintChips = () => {
+    if (!knownVariants.length) return;
+    chipBox.innerHTML = ["", ...knownVariants].map((n) =>
+      `<button type="button" class="machine-variant-tag${n === input.value.trim() ? " selected" : ""}" data-variant="${escapeHtml(n)}">${n ? escapeHtml(n) + machineFactorSuffix(ratios[n]) : "None"}</button>`).join("");
+  };
+  // The ratio box belongs to whichever machine is in the name field: filled
+  // from the saved ratio for a known one, emptied for a new name, so a new
+  // machine never silently inherits the previous machine's ratio. Once the
+  // ratio is typed by hand it is left alone.
+  const syncRatio = () => {
+    ratioInput.value = ratios[input.value.trim()] != null ? ratios[input.value.trim()] : "";
+  };
+  chipBox.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-variant]");
+    if (!chip) return;
+    input.value = chip.dataset.variant;
+    ratioTouched = false;
+    syncRatio();
+    paintChips();
+  });
+  input.addEventListener("input", () => {
+    if (!ratioTouched) syncRatio();
+    paintChips();
+  });
+  ratioInput.addEventListener("input", () => { ratioTouched = true; });
+  knownVariantsFor(exerciseName, ratios).then((names) => {
+    if (!chipBox.isConnected || !names.length) return;
+    knownVariants = names;
+    paintChips();
+  });
   input.focus();
   modalContent.querySelector("#machine-variant-save").addEventListener("click", async () => {
     const text = input.value.trim();
@@ -358,7 +455,7 @@ async function openMachineVariantModal(exerciseName) {
     // name has nothing to key off next time this exercise is logged.
     if (text) {
       const ratioRaw = ratioInput.value.trim();
-      const ratio = ratioRaw ? parseFloat(ratioRaw) : null;
+      const ratio = ratioRaw ? parseFloat(ratioRaw) : 1;
       try {
         const result = await apiPut(`/api/exercises/${encodeURIComponent(exerciseName)}/variant-ratios`, { variant: text, ratio });
         variantRatioCache[exerciseName] = result.ratios;
@@ -568,6 +665,7 @@ async function removeExerciseFromWorkout(exerciseName) {
   if (activeWorkout.restOverrides) delete activeWorkout.restOverrides[exerciseName];
   if (activeWorkout.restPositionOverrides) delete activeWorkout.restPositionOverrides[exerciseName];
   if (activeWorkout.variantByExercise) delete activeWorkout.variantByExercise[exerciseName];
+  if (activeWorkout.startSideByExercise) delete activeWorkout.startSideByExercise[exerciseName];
   if (activeWorkout.handleByExercise) delete activeWorkout.handleByExercise[exerciseName];
   if (activeWorkout.gripByExercise) delete activeWorkout.gripByExercise[exerciseName];
   delete pendingHandleGripByExercise[exerciseName];

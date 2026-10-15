@@ -405,7 +405,8 @@ async function finishOrSaveWorkout() {
   // what was actually logged, before the template-diff decision -- an
   // edit-in-place save (editingWorkoutId != null) has no such review since
   // that path already shows the same data it started from.
-  if (editingWorkoutId == null) {
+  const summaryShown = editingWorkoutId == null && featureEnabled("finishSummary");
+  if (summaryShown) {
     await showFinishSummary(durationSec);
   }
 
@@ -479,7 +480,7 @@ async function finishOrSaveWorkout() {
   // time -- see its own comment on why its Continue button no longer closes
   // it directly. This is the actual close, now that there's nothing left to
   // show on top of it.
-  if (editingWorkoutId == null) closeModal();
+  if (summaryShown) closeModal();
 
   activeWorkout = null;
   persistActiveWorkout();

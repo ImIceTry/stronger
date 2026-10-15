@@ -4,7 +4,7 @@
 
 function orderedExerciseList() {
   // Superset-grouped exercises render adjacent to each other; everything else keeps its original order.
-  const groups = activeWorkout.supersets || {};
+  const groups = activeSupersetGroups();
   const seen = new Set();
   const result = [];
   activeWorkout.exercises.forEach((name) => {
@@ -27,7 +27,7 @@ function orderedExerciseList() {
 // Where this exercise sits within its (adjacent) superset run, so the cards
 // of one superset can be drawn joined together.
 function supersetSlot(exerciseName) {
-  const groups = activeWorkout.supersets || {};
+  const groups = activeSupersetGroups();
   const group = groups[exerciseName];
   if (!group) return { cont: false, last: true };
   const list = orderedExerciseList();
@@ -59,6 +59,7 @@ function formatSetValue(unitType, s) {
 // recorded rest_after_sec, static), or idle (preview of what confirming
 // this row *would* use, static, visually muted since it hasn't happened).
 function buildRestDividerHtml(exerciseName, position, confirmedSet, suppressForDropPair, isJustActivated) {
+  if (!featureEnabled("restTimer")) return "";
   // No divider between a drop set's own two halves (2026-09-11, ImIceTry's
   // own call) -- there's no real rest in between (you drop the weight and
   // keep going), so showing one read as a normal inter-set gap that isn't
@@ -155,6 +156,10 @@ function pendingGoalText(exerciseName, prev, unitType, mode, rowSetType) {
 
 function renderExerciseCard(card, exerciseName, previousData, unitType, justConfirmedThisRender) {
   unitType = unitType || "weight_reps";
+  const showPrev = featureEnabled("previousColumn");
+  const showPrefill = featureEnabled("prefill");
+  const showRpe = featureEnabled("rpe");
+  const canTagSets = setTypeOptionsAvailable();
   // Every exercise renders the same KG + REPS/TIME + RPE layout now
   // (2026-09-12, ImIceTry's own ask) -- no more collapsing time/reps_only
   // exercises into a single-column layout that dropped the RPE option.
@@ -166,7 +171,7 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
   const confirmedSets = activeWorkout.sets.filter((s) => s.exercise_name === exerciseName);
   const confirmedByOrder = new Map(confirmedSets.map((s) => [s.set_order, s]));
   const maxConfirmedOrder = confirmedSets.length ? Math.max(...confirmedSets.map((s) => s.set_order)) : 0;
-  const group = activeWorkout.supersets ? activeWorkout.supersets[exerciseName] : null;
+  const group = activeSupersetGroups()[exerciseName] || null;
 
   // Reference screenshots of Strong (2026-09-10) show every set from last
   // time up front with its own live checkmark -- not growing one at a time,
@@ -207,7 +212,7 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
     // shown next to, since a freshly-confirmed set rarely has its own RPE
     // picked yet.
     const prevForIndex = previousForSetIndex(previousData, historicalIndexFor(exerciseName, position));
-    const prevRpeTag = prevForIndex && prevForIndex.rpe != null ? ` @${prevForIndex.rpe}` : "";
+    const prevRpeTag = showRpe && prevForIndex && prevForIndex.rpe != null ? ` @${prevForIndex.rpe}` : "";
     const prevText = prevForIndex ? `${formatSetValue(unitType, prevForIndex)}${prevRpeTag}` : "-";
     if (s) {
       // "assisted" (2026-09-18) shows its own rep count inline when known --
@@ -216,7 +221,7 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
       // "failure" stays rendered too (not just accepted by validation) --
       // the 2 real historical sets still tagged with it need to keep
       // reading correctly, even though it's no longer a creatable option.
-      const typeTag = (s.set_type === "drop" ? " (D)" : s.set_type === "failure" ? " (F)" : s.set_type === "warmup" ? " (W)" : s.set_type === "assisted" ? ` (A${s.assisted_reps != null ? s.assisted_reps : ""})` : "") + (s.unilateral ? " (U)" : "") + (s.side === "left" ? " (L)" : s.side === "right" ? " (R)" : "");
+      const typeTag = (s.set_type === "drop" ? " (D)" : s.set_type === "failure" ? " (F)" : s.set_type === "warmup" ? " (W)" : s.set_type === "assisted" ? ` (A${s.assisted_reps != null ? s.assisted_reps : ""})` : "") + (s.unilateral ? " (U)" : "") + (s.side === "left" ? " (L→R)" : s.side === "right" ? " (R→L)" : "");
       // Only the row matching this exact confirm action plays its mount
       // animation (2026-09-12 fix, see justConfirmedKey) -- every other
       // already-confirmed row on the screen renders in its plain settled
@@ -230,7 +235,7 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
       // also resets its weight/reps entry state, real overkill just to
       // attach an RPE after the fact). "+RPE" ghost prompt when unset, same
       // muted styling the rest of this app's ghost-prefill affordances use.
-      const confirmedRpeBadge = `<button class="rpe-badge${justConfirmedClass}${s.rpe == null ? " ghost" : ""}" data-rpe-edit-order="${s.set_order}">${s.rpe != null ? s.rpe : "+RPE"}</button>`;
+      const confirmedRpeBadge = !showRpe ? "" : `<button class="rpe-badge${justConfirmedClass}${s.rpe == null ? " ghost" : ""}" data-rpe-edit-order="${s.set_order}">${s.rpe != null ? s.rpe : "+RPE"}</button>`;
       // A confirmed set's own mode is whatever it actually holds, not this
       // card's current toggle -- switching the header's REPS/TIME default
       // later shouldn't retroactively relabel a set already logged.
@@ -254,8 +259,8 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
       <div class="set-row-swipe-wrap" data-swipe-order="${s.set_order}">
         <div class="swipe-delete-bg">Delete</div>
         <div class="set-row confirmed${justConfirmedClass}">
-          <button class="col-set" data-set-type-edit-order="${s.set_order}">${logicalSetNumber(exerciseName, position)}${typeTag}</button>
-          <span class="col-previous">${prevText}</span>
+          <button class="col-set" data-set-type-edit-order="${s.set_order}"${canTagSets ? "" : " disabled"}>${logicalSetNumber(exerciseName, position)}${typeTag}</button>
+          ${showPrev ? `<span class="col-previous">${prevText}</span>` : ""}
           ${valueCells}
           <span class="col-check"><button class="confirm-btn confirmed" data-uncheck-order="${s.set_order}" title="Uncheck"><svg class="confirmed-check${justConfirmedClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></button></span>
         </div>
@@ -272,11 +277,11 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
 
     const typedInput = exercisePendingInput[position];
     const prefillWeight = typedInput ? typedInput.weight
-      : (prevForIndex && prevForIndex.weight_kg != null ? prevForIndex.weight_kg : "");
+      : (showPrefill && prevForIndex && prevForIndex.weight_kg != null ? prevForIndex.weight_kg : "");
     const prefillReps = typedInput ? typedInput.reps
-      : (prevForIndex && prevForIndex.reps != null ? prevForIndex.reps : "");
+      : (showPrefill && prevForIndex && prevForIndex.reps != null ? prevForIndex.reps : "");
     const prefillDuration = typedInput ? typedInput.duration
-      : (prevForIndex && prevForIndex.duration_sec != null ? secondsToMmssBuffer(prevForIndex.duration_sec) : "");
+      : (showPrefill && prevForIndex && prevForIndex.duration_sec != null ? secondsToMmssBuffer(prevForIndex.duration_sec) : "");
 
     // Stays a dim "ghost" suggestion for as long as the set itself is still
     // pending -- typing via the numpad or tapping PREVIOUS both still just
@@ -293,7 +298,7 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
     // from the way weight/reps/duration do via readField) -- confirming
     // without ever touching RPE must still submit this suggested value.
     let rowRpe = exercisePendingRpe[position];
-    if (rowRpe === undefined && prevForIndex && prevForIndex.rpe != null) {
+    if (showRpe && showPrefill && rowRpe === undefined && prevForIndex && prevForIndex.rpe != null) {
       rowRpe = prevForIndex.rpe;
       if (!pendingRpeByExercise[exerciseName]) pendingRpeByExercise[exerciseName] = {};
       pendingRpeByExercise[exerciseName][position] = rowRpe;
@@ -305,7 +310,7 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
     // doubles as the numpad's read/write data -- a nested badge would
     // corrupt weight/reps parsing. Ghost-styled like every other pending
     // field, whether it's a real pick or this prefill, until confirmed.
-    const rpeBadge = rowRpe != null ? `<span class="rpe-badge ghost">${rowRpe}</span>` : "";
+    const rpeBadge = showRpe && rowRpe != null ? `<span class="rpe-badge ghost">${rowRpe}</span>` : "";
     const secondFieldKey = mode === "time" ? "duration" : "reps";
     const secondFieldDisplay = mode === "time"
       ? (prefillDuration ? formatMmssBuffer(prefillDuration) : "-")
@@ -321,8 +326,8 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
     // same as if typed (2026-09-10) -- distinct from the passive prefill
     // (item 25), an explicit "use last time's numbers" action. Only a real
     // button when there's actually a previous value to copy.
-    const goalText = pendingGoalText(exerciseName, prevForIndex, unitType, mode, rowSetType);
-    const previousCell = prevForIndex
+    const goalText = featureEnabled("goalLine") ? pendingGoalText(exerciseName, prevForIndex, unitType, mode, rowSetType) : "";
+    const previousCell = !showPrev ? "" : prevForIndex
       ? `<button class="col-previous" data-prev-index="${position}">${prevText}${goalText ? `<span class="prev-goal">Goal ${goalText}</span>` : ""}</button>`
       : `<span class="col-previous">${prevText}</span>`;
     // The set number itself is now the type control (2026-09-10, replaces
@@ -343,17 +348,15 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
     // Both classes at once when combined (e.g. "tagged drop unilateral") --
     // CSS selectors like .tagged.drop still match regardless of what else is
     // in the list, so this doesn't change any existing single-tag styling.
-    const pendingSide = isPendingUnilateral ? (pendingSideByExercise[exerciseName] || {})[position] : null;
     const activeSetTags = [];
     if (typeLetter) activeSetTags.push(rowSetType);
     if (isPendingUnilateral) activeSetTags.push("unilateral");
-    if (pendingSide) activeSetTags.push("side-" + pendingSide);
     const setBadgeClass = activeSetTags.length ? " tagged " + activeSetTags.join(" ") : "";
     rowsHtml.push(`
       <div class="set-row-swipe-wrap" data-swipe-pending="${position}">
         <div class="swipe-delete-bg">Delete</div>
         <div class="set-row pending" data-pending-index="${position}">
-          <button class="col-set${setBadgeClass}" data-set-type-btn="${position}">${setBadge || logicalSetNumber(exerciseName, position)}</button>
+          <button class="col-set${setBadgeClass}" data-set-type-btn="${position}"${canTagSets ? "" : " disabled"}>${setBadge || logicalSetNumber(exerciseName, position)}</button>
           ${previousCell}
           ${fieldsHtml}
           <span class="col-check"><button class="confirm-btn"><svg class="confirmed-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></button></span>
@@ -374,6 +377,7 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
   const machineVariant = (activeWorkout.variantByExercise || {})[exerciseName];
   // Cable handle/grip chip (2026-10-06) -- always shown on exercises that
   // support it so there's a visible way to set it; placement is provisional.
+  const startSide = (activeWorkout.startSideByExercise || {})[exerciseName];
   const machineSettings = machineSettingsFor(exerciseName);
   const machineSettingsLabel = machineSettings.map((p) => p[1] ? `${p[0]} ${p[1]}` : p[0]).join(" \u00b7 ");
   const handleGripSupported = exerciseSupportsHandleGrip(exerciseName);
@@ -383,27 +387,31 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
   // opens openFieldModePicker to switch this exercise's still-open rows
   // between the two, instead of that choice being permanently fixed by the
   // exercise's own unit_type.
-  const headerCells = `<span class="col-kg">KG</span><button class="col-reps field-mode-toggle" data-field-mode-toggle="${escapeHtml(exerciseName)}">${mode === "time" ? "TIME" : "REPS"}</button>`;
+  const modeLabel = mode === "time" ? "TIME" : "REPS";
+  const headerCells = `<span class="col-kg">KG</span>` + (featureEnabled("fieldModeToggle")
+    ? `<button class="col-reps field-mode-toggle" data-field-mode-toggle="${escapeHtml(exerciseName)}">${modeLabel}</button>`
+    : `<span class="col-reps">${modeLabel}</span>`);
 
   const addSetSeconds = restSecondsFor(exerciseName, null);
-  const addSetLabel = `ADD SET (${formatClock(addSetSeconds)})`;
+  const addSetLabel = featureEnabled("restTimer") ? `ADD SET (${formatClock(addSetSeconds)})` : "ADD SET";
 
   const slot = supersetSlot(exerciseName);
-  card.className = "exercise-card" + (group ? " superset" : "") + (slot.cont ? " superset-cont" : "") + (group && !slot.last ? " superset-open" : "");
+  card.className = "exercise-card" + (group ? " superset" : "") + (slot.cont ? " superset-cont" : "") + (group && !slot.last ? " superset-open" : "") + (showPrev ? "" : " no-prev");
   card.innerHTML = `
     ${group && !slot.cont ? `<div class="superset-label">Superset ${group}</div>` : ""}
     <h3>
-      <button class="exercise-name-link" data-exercise-name="${escapeHtml(exerciseName)}">${escapeHtml(exerciseName)}</button>
+      <button class="exercise-name-link" data-exercise-name="${escapeHtml(exerciseName)}"${featureEnabled("exerciseLink") ? "" : " disabled"}>${escapeHtml(exerciseName)}</button>
       <button class="icon-btn options-btn" title="More">&#8943;</button>
     </h3>
-    ${stickyNote ? `<div class="variant-bar">${escapeHtml(stickyNote)}</div>` : ""}
-    ${handleGripSupported ? `<button class="machine-variant-tag handle-chip" data-handle-grip-chip="${escapeHtml(exerciseName)}">${handleGripLabel ? escapeHtml(handleGripLabel) : "+ Handle / grip"} &#9662;</button>` : ""}
-    ${machineSettingsLabel ? `<button class="machine-variant-tag" data-machine-settings-tag="${escapeHtml(exerciseName)}">&#9776; ${escapeHtml(machineSettingsLabel)}</button>` : ""}
-    ${machineVariant ? `<button class="machine-variant-tag" data-machine-variant-tag="${escapeHtml(exerciseName)}">&#9881; ${escapeHtml(machineVariant)}</button>` : ""}
-    ${exerciseNote ? `<div class="exercise-note">${escapeHtml(exerciseNote)}</div>` : ""}
+    ${stickyNote && featureEnabled("stickyNotes") ? `<div class="variant-bar">${escapeHtml(stickyNote)}</div>` : ""}
+    ${handleGripSupported && featureEnabled("handleGrip") ? `<button class="machine-variant-tag handle-chip" data-handle-grip-chip="${escapeHtml(exerciseName)}">${handleGripLabel ? escapeHtml(handleGripLabel) : "+ Handle / grip"} &#9662;</button>` : ""}
+    ${machineSettingsLabel && featureEnabled("machineSettings") ? `<button class="machine-variant-tag" data-machine-settings-tag="${escapeHtml(exerciseName)}">&#9776; ${escapeHtml(machineSettingsLabel)}</button>` : ""}
+    ${machineVariant && featureEnabled("machineVariant") ? `<button class="machine-variant-tag" data-machine-variant-tag="${escapeHtml(exerciseName)}">&#9881; ${escapeHtml(machineVariant)}${machineFactorSuffix((variantRatioCache[exerciseName] || {})[machineVariant])}</button>` : ""}
+    ${startSide && featureEnabled("startSide") ? `<button class="machine-variant-tag" data-start-side-tag="${escapeHtml(exerciseName)}">&#8596; Start ${startSide}</button>` : ""}
+    ${exerciseNote && featureEnabled("exerciseNotes") ? `<div class="exercise-note">${escapeHtml(exerciseNote)}</div>` : ""}
     <div class="set-table-header">
       <span class="col-set">SET</span>
-      <span class="col-previous">PREVIOUS</span>
+      ${showPrev ? `<span class="col-previous">PREVIOUS</span>` : ""}
       ${headerCells}
       <span class="col-check"></span>
     </div>
@@ -461,7 +469,7 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
       const openWeightSecondNumpad = (startKey) => {
         const fields = [
           {
-            key: "weight", allowDecimal: true, initialValue: readField(weightField), numpadSlot: "weightHint", selectOnType: true,
+            key: "weight", allowDecimal: true, initialValue: readField(weightField), numpadSlot: featureEnabled("weightHint") ? "weightHint" : "none", selectOnType: true,
             weightHintRpe: prevForIndex ? prevForIndex.rpe : null,
             // Double-progression data (2026-09-18, ImIceTry's own ask) -- lets
             // the RPE>=9.5 branch tell "genuinely hit your ceiling at this
@@ -509,7 +517,7 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
       });
     }
 
-    card.querySelector(`[data-set-type-btn="${index}"]`).addEventListener("click", () => openSetTypePicker(exerciseName, index, totalPositions));
+    if (canTagSets) card.querySelector(`[data-set-type-btn="${index}"]`).addEventListener("click", () => openSetTypePicker(exerciseName, index, totalPositions));
   }
 
   card.querySelector(".options-btn").addEventListener("click", () => openExerciseOptionsMenu(exerciseName));
@@ -517,15 +525,18 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
   if (machineSettingsTag) machineSettingsTag.addEventListener("click", () => openMachineSettingsModal(exerciseName));
   const machineVariantTag = card.querySelector("[data-machine-variant-tag]");
   if (machineVariantTag) machineVariantTag.addEventListener("click", () => openMachineVariantModal(exerciseName));
+  const startSideTag = card.querySelector("[data-start-side-tag]");
+  if (startSideTag) startSideTag.addEventListener("click", () => cycleStartSide(exerciseName, true));
   const handleGripChip = card.querySelector("[data-handle-grip-chip]");
   if (handleGripChip) handleGripChip.addEventListener("click", () => openHandleGripModal(exerciseName));
-  card.querySelector("[data-field-mode-toggle]").addEventListener("click", () => openFieldModePicker(exerciseName, mode));
-  card.querySelector(".exercise-name-link").addEventListener("click", () => openExerciseDetailFromActiveWorkout(exerciseName));
+  const fieldModeToggle = card.querySelector("[data-field-mode-toggle]");
+  if (fieldModeToggle) fieldModeToggle.addEventListener("click", () => openFieldModePicker(exerciseName, mode));
+  if (featureEnabled("exerciseLink")) card.querySelector(".exercise-name-link").addEventListener("click", () => openExerciseDetailFromActiveWorkout(exerciseName));
   // Holding anywhere on the name bar enters reorder mode, not just the name
   // text itself (2026-09-13, ImIceTry's own ask) -- the old target was just
   // the narrow name button, easy to miss when reaching for "the bar" as a
   // whole the way you'd grab a drag handle.
-  wireLongPress(card.querySelector("h3"), enterReorderMode, 500);
+  if (featureEnabled("reorder")) wireLongPress(card.querySelector("h3"), enterReorderMode, 500);
   card.querySelector(".add-set-btn").addEventListener("click", () => {
     extraSetsByExercise[exerciseName] = (extraSetsByExercise[exerciseName] || 0) + 1;
     renderActiveScreen();

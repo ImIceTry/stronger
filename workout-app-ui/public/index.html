@@ -234,6 +234,23 @@
       </div>
       <label class="toggle-switch"><input type="checkbox" id="settings-template-prompt-toggle"><span class="toggle-track"></span></label>
     </div>
+    <div class="settings-row settings-row-clickable" id="settings-workout-features-row">
+      <div class="settings-row-text">
+        <span>Workout screen features</span>
+        <span class="settings-row-hint">Turn optional features on or off and choose the radial menu</span>
+      </div>
+      <span class="settings-row-value">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="settings-row-chevron"><path d="M9 6l6 6-6 6"/></svg>
+      </span>
+    </div>
+  </section>
+
+  <section id="screen-workout-features" class="screen hidden">
+    <div class="section-header">
+      <button id="workout-features-back" class="icon-btn-plain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-icon back-arrow-icon"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+      <h1>Workout Screen</h1>
+    </div>
+    <div id="workout-features-body"></div>
   </section>
 
   <section id="screen-account" class="screen hidden">
@@ -462,6 +479,7 @@
      before app.js's own boot code runs at the bottom of the page, same as
      queue.js/muscle-map.js above already do. -->
 <script src="js/app-utils.js"></script>
+<script src="js/app-features.js"></script>
 <script src="js/app-exercise-search.js"></script>
 <script src="js/app-api.js"></script>
 <script src="js/app-nav.js"></script>

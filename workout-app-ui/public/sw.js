@@ -4,7 +4,7 @@
 // NOT caching API responses -- this is a live set-logging tool, a stale
 // cached workout/history response would be actively wrong to show, not
 // just outdated, so every real data fetch always goes to the network.
-const CACHE_NAME = "stronger-shell-v39";
+const CACHE_NAME = "stronger-shell-v47";
 // Loop 2 (2026-09-17) split the old monolithic app.js into a dozen plain
 // <script> files -- every one of them needs to be listed here too, or a
 // single flaky-connection fetch failure for just one of them has no
@@ -24,7 +24,7 @@ const SHELL_ASSETS = [
   "css/style-history.css", "css/style-exercises.css", "css/style-shared-ui.css",
   "css/style-modals.css",
   "js/queue.js", "js/muscle-map.js",
-  "js/app-utils.js", "js/app-exercise-search.js", "js/app-api.js", "js/app-nav.js", "js/app-screens.js",
+  "js/app-utils.js", "js/app-features.js", "js/app-exercise-search.js", "js/app-api.js", "js/app-nav.js", "js/app-screens.js",
   "js/app-overlay.js", "js/app-settings.js", "js/app-profile.js",
   "js/app-history.js", "js/app-exercises.js", "js/app-home.js", "js/app-plan.js",
   "js/app-rest-timer.js", "js/app-finish.js", "js/app-pr-anomaly.js",

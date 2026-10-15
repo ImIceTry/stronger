@@ -399,10 +399,15 @@ function estimated1rmClient(weightKg, reps) {
 // Handle / grip / machine variant used for an exercise's sets (2026-10-10,
 // ImIceTry's ask) -- one line of distinct combinations, so a switch mid-exercise
 // still shows both.
+function machineFactorSuffix(ratio) {
+  return ratio != null && ratio !== 1 ? ` \u00d7${+Number(ratio).toFixed(3)}` : "";
+}
+
 function exerciseGearLabel(sets) {
   const seen = [];
   sets.forEach((s) => {
-    const label = [s.handle, s.grip, s.variant].filter(Boolean).join(" \u00b7 ");
+    const machine = s.variant ? s.variant + machineFactorSuffix(s.weight_ratio) : "";
+    const label = [s.handle, s.grip, machine].filter(Boolean).join(" \u00b7 ");
     if (label && !seen.includes(label)) seen.push(label);
   });
   return seen.join(" / ");
@@ -430,7 +435,7 @@ function renderWorkoutSummaryBlocks(sets, unitTypeByExercise) {
     const unitType = unitTypeByExercise[exerciseName] || "weight_reps";
     const showOneRm = unitType === "weight_reps";
     const rows = grouped[exerciseName].map((s) => {
-      const typeTag = (s.set_type === "drop" ? " (D)" : s.set_type === "failure" ? " (F)" : s.set_type === "warmup" ? " (W)" : s.set_type === "assisted" ? ` (A${s.assisted_reps != null ? s.assisted_reps : ""})` : "") + (s.unilateral ? " (U)" : "") + (s.side === "left" ? " (L)" : s.side === "right" ? " (R)" : "");
+      const typeTag = (s.set_type === "drop" ? " (D)" : s.set_type === "failure" ? " (F)" : s.set_type === "warmup" ? " (W)" : s.set_type === "assisted" ? ` (A${s.assisted_reps != null ? s.assisted_reps : ""})` : "") + (s.unilateral ? " (U)" : "") + (s.side === "left" ? " (L→R)" : s.side === "right" ? " (R→L)" : "");
       const rpeTag = s.rpe != null ? ` @${s.rpe}` : "";
       const oneRm = showOneRm ? estimated1rmClient(s.weight_kg, s.reps) : null;
       return `<div class="wd-set-row${showOneRm ? "" : " no-1rm"}">
@@ -474,7 +479,7 @@ function buildWorkoutShareText(w, unitTypeByExercise, totalVolume) {
     lines.push(gear ? `${exerciseName} (${gear})` : exerciseName);
     grouped[exerciseName].forEach((s) => {
       const unitType = unitTypeByExercise[exerciseName] || "weight_reps";
-      const typeTag = (s.set_type === "drop" ? " (D)" : s.set_type === "failure" ? " (F)" : s.set_type === "warmup" ? " (W)" : s.set_type === "assisted" ? ` (A${s.assisted_reps != null ? s.assisted_reps : ""})` : "") + (s.unilateral ? " (U)" : "") + (s.side === "left" ? " (L)" : s.side === "right" ? " (R)" : "");
+      const typeTag = (s.set_type === "drop" ? " (D)" : s.set_type === "failure" ? " (F)" : s.set_type === "warmup" ? " (W)" : s.set_type === "assisted" ? ` (A${s.assisted_reps != null ? s.assisted_reps : ""})` : "") + (s.unilateral ? " (U)" : "") + (s.side === "left" ? " (L→R)" : s.side === "right" ? " (R→L)" : "");
       const rpeTag = s.rpe != null ? ` @${s.rpe}` : "";
       // formatSetValue's "&times;" is an HTML entity meant for innerHTML --
       // this is plain text (a textarea value / share sheet body), so it

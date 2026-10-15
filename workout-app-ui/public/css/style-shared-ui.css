@@ -107,6 +107,9 @@
   min-height: 44px;
 }
 
+.icon-btn-plain.hidden,
+.icon-btn.hidden { display: none; }
+
 /* Shared press-state feedback for every button-like control (Phase 5.4) --
    one rule instead of duplicating :active on each selector above. Extended
    2026-09-10 ("make it more reactive") to the tappable controls added since:
@@ -617,3 +620,7 @@ button.confirm-btn:active {
   font-size: 14px; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 .next-up-remove { font-size: 20px; }
+
+/* Workout-screen feature toggles (Settings -> Workout screen features). */
+.settings-row-disabled { opacity: 0.45; }
+.settings-radial-intro { margin: 0 0 4px; }

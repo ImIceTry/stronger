@@ -110,7 +110,7 @@ function editConfirmedSet(exerciseName, setOrder, openField) {
   if (!pendingUnilateralByExercise[exerciseName]) pendingUnilateralByExercise[exerciseName] = {};
   pendingUnilateralByExercise[exerciseName][reopenedIndex] = !!removed.unilateral;
   if (!pendingSideByExercise[exerciseName]) pendingSideByExercise[exerciseName] = {};
-  pendingSideByExercise[exerciseName][reopenedIndex] = removed.side || null;
+  if (removed.side) pendingSideByExercise[exerciseName][reopenedIndex] = removed.side;
   if (!pendingAssistedRepsByExercise[exerciseName]) pendingAssistedRepsByExercise[exerciseName] = {};
   pendingAssistedRepsByExercise[exerciseName][reopenedIndex] = removed.assisted_reps ?? null;
   if (!pendingVariantByExercise[exerciseName]) pendingVariantByExercise[exerciseName] = {};

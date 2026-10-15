@@ -24,6 +24,10 @@ function radialActionsFor(exerciseName) {
         if (await toggleDefaultUnilateral(exerciseName)) renderActiveScreen();
       },
     },
+    {
+      key: "start-side", icon: "startSide", label: startSideMenuLabel(exerciseName),
+      run: () => cycleStartSide(exerciseName),
+    },
     { key: "rest", icon: "restTimer", label: "Rest timer", run: () => openRestTimerModal(exerciseName) },
     { key: "variant", icon: "machineVariant", label: "Machine / variant", run: () => openMachineVariantModal(exerciseName) },
     { key: "machine-settings", icon: "machineSettings", label: "Machine settings", run: () => openMachineSettingsModal(exerciseName) },
@@ -33,11 +37,17 @@ function radialActionsFor(exerciseName) {
     { key: "superset", icon: "superset", label: "Superset", run: () => openSupersetPicker(exerciseName) },
     { key: "remove", icon: "remove", label: "Remove", danger: true, run: () => removeExerciseFromWorkout(exerciseName) },
   );
-  const unilateral = actions.find((a) => a.key === "unilateral");
-  fetchDefaultUnilateral(exerciseName).then((on) => {
-    unilateral.label = on ? "Always unilateral: on (tap to turn off)" : "Always unilateral: off (tap to turn on)";
-  });
-  return actions;
+  const chosen = new Set(radialSelection());
+  const shown = actions.filter((a) => chosen.has(a.key) && radialKeyAvailable(a.key));
+  const unilateral = shown.find((a) => a.key === "unilateral");
+  const startSide = shown.find((a) => a.key === "start-side");
+  if (unilateral || startSide) {
+    fetchDefaultUnilateral(exerciseName).then((on) => {
+      if (startSide) startSide.label = startSideMenuLabel(exerciseName, on);
+      if (unilateral) unilateral.label = on ? "Always unilateral: on (tap to turn off)" : "Always unilateral: off (tap to turn on)";
+    });
+  }
+  return shown;
 }
 
 window.addEventListener("popstate", () => closeRadialMenu());
@@ -50,6 +60,7 @@ function closeRadialMenu() {
 function openRadialMenu(exerciseName, x, y) {
   closeRadialMenu();
   const actions = radialActionsFor(exerciseName);
+  if (!actions.length) return null;
   const margin = RADIAL_RADIUS + RADIAL_ICON_SIZE / 2 + 8;
   const cx = Math.min(Math.max(x, margin), window.innerWidth - margin);
   const cy = Math.min(Math.max(y, margin), window.innerHeight - margin);
@@ -214,8 +225,10 @@ function wireExerciseCardRadialSwipe(card, exerciseName) {
     const dy = e.clientY - startY;
     if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { startX = null; return; } // vertical scroll
     if (dx > RADIAL_SWIPE_MIN_DX && dx > Math.abs(dy) * 1.5) {
+      if (!featureEnabled("radialGesture")) { startX = null; return; }
       try { card.setPointerCapture(e.pointerId); } catch (err) { /* pointer already gone -- harmless */ }
       menu = openRadialMenu(exerciseName, e.clientX, e.clientY);
+      if (!menu) startX = null;
     }
   });
   const finish = (e) => {

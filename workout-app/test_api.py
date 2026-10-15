@@ -258,6 +258,14 @@ def main():
         status, body = request("PUT", "/api/exercises/Plank%20Hold/sticky-note", {"note": ""})
         check(status == 200 and body["note"] is None, "clearing the note removes it (empty == none, not an empty string)")
 
+        print("machine factors: a named machine with factor 1 is kept, null removes it")
+        status, body = request("PUT", "/api/exercises/Lat%20Pulldown/variant-ratios", {"variant": "Old machine", "ratio": 1})
+        check(status == 200 and body["ratios"] == {"Old machine": 1}, f"factor 1 stored, got {body}")
+        status, body = request("PUT", "/api/exercises/Lat%20Pulldown/variant-ratios", {"variant": "Heavy machine", "ratio": 1.05})
+        check(status == 200 and body["ratios"] == {"Old machine": 1, "Heavy machine": 1.05}, f"two machines kept, got {body}")
+        status, body = request("PUT", "/api/exercises/Lat%20Pulldown/variant-ratios", {"variant": "Old machine", "ratio": None})
+        check(status == 200 and body["ratios"] == {"Heavy machine": 1.05}, f"null removes only that machine, got {body}")
+
         print("muscle scores: strength/intensity/progress blend, real math not just a shape check")
         now = datetime.now()  # matches records.py's own "now" basis (naive local, fixed 2026-09-16)
         old_date = (now - timedelta(days=60)).strftime("%Y-%m-%d %H:%M:%S")

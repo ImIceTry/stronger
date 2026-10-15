@@ -570,6 +570,10 @@
 }
 
 .handle-chip { margin-right: 6px; }
+.machine-variant-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.machine-variant-chips:empty { display: none; }
+.machine-variant-chips .machine-variant-tag { margin: 0; }
+.machine-variant-chips .machine-variant-tag.selected { background: var(--accent, #3b82f6); color: #fff; }
 .handle-group-label {
   color: var(--text-secondary);
   font-size: 12px;

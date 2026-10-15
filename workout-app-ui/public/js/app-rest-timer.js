@@ -32,7 +32,7 @@ let restNotification = null;
 // Extra context appended to the rest notification body: which superset this
 // is, and how many other countdowns are still running.
 function restNotificationExtra(exerciseName) {
-  const group = activeWorkout && activeWorkout.supersets ? activeWorkout.supersets[exerciseName] : null;
+  const group = activeSupersetGroups()[exerciseName] || null;
   return (group ? ` · Superset ${group}` : "") + (parallelRestTimers.length ? ` · +${parallelRestTimers.length} running` : "");
 }
 
@@ -103,7 +103,7 @@ let workoutNotificationButtonListenerAttached = false;
 let lastWorkoutNotificationKey = null;
 
 async function startWorkoutForegroundNotification(name) {
-  if (!ForegroundServicePlugin || workoutForegroundServiceActive) return;
+  if (!ForegroundServicePlugin || workoutForegroundServiceActive || !featureEnabled("workoutNotification")) return;
   try {
     await ForegroundServicePlugin.requestPermissions();
     if (!workoutNotificationChannelReady) {
@@ -296,15 +296,16 @@ function computeNextSetPrefill(exerciseName, position) {
   const previousData = previousPerformanceCache[exerciseName] || null;
   const prevForIndex = previousForSetIndex(previousData, historicalIndexFor(exerciseName, position));
   const typedInput = (pendingInputByExercise[exerciseName] || {})[position];
+  const suggest = featureEnabled("prefill") ? prevForIndex : null;
   const weight = typedInput
     ? (typedInput.weight === "" ? null : typedInput.weight)
-    : (prevForIndex && prevForIndex.weight_kg != null ? prevForIndex.weight_kg : null);
+    : (suggest && suggest.weight_kg != null ? suggest.weight_kg : null);
   const reps = typedInput
     ? (typedInput.reps === "" ? null : typedInput.reps)
-    : (prevForIndex && prevForIndex.reps != null ? prevForIndex.reps : null);
+    : (suggest && suggest.reps != null ? suggest.reps : null);
   const durationSec = typedInput && typedInput.duration
     ? mmssBufferToSeconds(typedInput.duration)
-    : (prevForIndex && prevForIndex.duration_sec != null ? prevForIndex.duration_sec : null);
+    : (suggest && suggest.duration_sec != null ? suggest.duration_sec : null);
   return { weight, reps, durationSec };
 }
 
@@ -392,7 +393,7 @@ function allRestContexts() {
 }
 
 function supersetGroupOf(exerciseName) {
-  return activeWorkout && activeWorkout.supersets ? activeWorkout.supersets[exerciseName] || null : null;
+  return activeSupersetGroups()[exerciseName] || null;
 }
 
 // Counts down the non-primary timers; a finished one rings on its own.
@@ -490,6 +491,7 @@ function handleRestTimerVisibilityChange() {
 }
 
 function startRestTimer(exerciseName, position, seconds) {
+  if (!featureEnabled("restTimer")) return;
   // remaining lives on restTimerContext itself (not a closure-local var) so
   // openRestEditNumpad can read the actual current countdown, not just
   // whatever it was originally started with. total is the countdown's own
@@ -558,6 +560,21 @@ function adjustLiveRestTimer(deltaSeconds) {
 // from the notification's own Skip button instead.
 function skipLiveRestFromNotification() {
   if (restTimerContext && restTimerHandle != null) stopRestTimerManually();
+}
+
+// Silent teardown for when the rest timer feature is switched off mid-rest:
+// no bell, no vibration, no "back to it" notification.
+function dropRestTimers() {
+  clearInterval(restTimerHandle);
+  document.removeEventListener("visibilitychange", handleRestTimerVisibilityChange);
+  restTimerHandle = null;
+  restTimerContext = null;
+  parallelRestTimers = [];
+  if (restNotification) {
+    try { restNotification.close(); } catch (err) { /* already gone */ }
+    restNotification = null;
+  }
+  refreshWorkoutNotificationContent();
 }
 
 // Clears the live state and re-renders so the divider that had it drops

@@ -70,11 +70,9 @@ let pendingUnilateralByExercise = {};
 let pendingVariantByExercise = {};
 // Same idea for cable handle + grip (2026-10-06): position -> {handle, grip}.
 let pendingHandleGripByExercise = {};
-// Which limb did the work on a unilateral set (2026-09-17) -- 'left'/'right',
-// only ever meaningful alongside pendingUnilateralByExercise[exerciseName][i]
-// being true. Kept as its own map (not folded into the unilateral one)
-// since it's a strict refinement: a set can be unilateral with no side
-// specified, but never has a side without being unilateral.
+// Start side is now an exercise-wide option (activeWorkout.startSideByExercise,
+// 2026-10-14). This per-position map only carries the side of a logged set
+// that was reopened for editing, so re-confirming it keeps its own value.
 let pendingSideByExercise = {};
 // How many reps were assisted on a set tagged "assisted" (2026-09-18,
 // replaces the old "failure" set type) -- only ever meaningful alongside
@@ -253,6 +251,7 @@ async function startWorkout(fromWorkoutId, templateName, presetExercises, templa
     exerciseNotes: {},
     restOverrides: {},
     variantByExercise: {},
+    startSideByExercise: {},
     handleByExercise: {},
     gripByExercise: {},
     workoutNotes: "",
@@ -289,6 +288,7 @@ function startEditingWorkout(workout) {
     exerciseNotes: {},
     restOverrides: {},
     variantByExercise: {},
+    startSideByExercise: {},
     handleByExercise: {},
     gripByExercise: {},
     // Editing an already-synced workout starts with its real saved note,
@@ -391,6 +391,7 @@ async function fetchDefaultUnilateral(exerciseName) {
 // read as false. Used both at render time (the pending badge) and at
 // logSet time (what actually gets submitted), so they can never disagree.
 function isPositionUnilateral(exerciseName, position) {
+  if (!featureEnabled("unilateral")) return false;
   const override = (pendingUnilateralByExercise[exerciseName] || {})[position];
   if (override !== undefined) return !!override;
   return !!defaultUnilateralCache[exerciseName];
@@ -689,7 +690,7 @@ function openNumpad(exerciseName, index, fields, onDone, startIndex, onCancel) {
   let fieldIndex = startIndex || 0;
   const values = fields.map((f) => (f.initialValue != null && f.initialValue !== "" ? String(f.initialValue) : ""));
   // Weight-hint popup open/closed state (2026-09-18) -- tap the badge to
-  // toggle, same "tap again to undo" convention as toggleSetType/toggleSide.
+  // toggle, same "tap again to undo" convention as toggleSetType.
   // Per-field, not persisted: reset whenever the numpad moves to a new field
   // so a stale popup can't linger onto a field it doesn't apply to.
   let weightHintOpen = false;
@@ -800,11 +801,13 @@ function openNumpad(exerciseName, index, fields, onDone, startIndex, onCancel) {
     // stopping this position's own timer first if it's the one currently
     // live. NEXT is the only way to (re)start a countdown now, uniformly
     // for idle/live/historical alike).
-    const slot = currentField().numpadSlot || "rpe";
+    const slot = currentField().numpadSlot || (featureEnabled("rpe") ? "rpe" : "none");
     let rpeCell;
     let weightHintText = "";
     if (slot === "skip") {
       rpeCell = `<button class="numpad-key numpad-action" data-action="skip-rest">Skip</button>`;
+    } else if (slot === "none") {
+      rpeCell = `<span class="numpad-blank"></span>`;
     } else if (slot === "weightHint") {
       const advice = progressionAdvice(
         { rpe: currentField().weightHintRpe, weight_kg: currentField().weightHintWeight, reps: currentField().weightHintReps },
@@ -819,7 +822,7 @@ function openNumpad(exerciseName, index, fields, onDone, startIndex, onCancel) {
     }
     // Small inline popup (2026-09-18), replacing what used to be a plain
     // native alert() -- tap the badge again to dismiss (same toggle
-    // convention as toggleSetType/toggleSide), or tap fully outside the
+    // convention as toggleSetType), or tap fully outside the
     // numpad, which already closes the whole panel regardless. Sits in
     // normal flow right above the grid rather than as an absolutely-
     // positioned overlay, so it can't misalign against whichever grid cell
@@ -1100,18 +1103,24 @@ async function renderActiveScreen(opts = {}) {
           // yet this workout (an explicit choice already made this session
           // always wins).
           if (!activeWorkout.variantByExercise) activeWorkout.variantByExercise = {};
-          if (!(exerciseName in activeWorkout.variantByExercise)) {
+          if (featureEnabled("machineVariant") && !(exerciseName in activeWorkout.variantByExercise)) {
             const lastVariant = data.sets.map((s) => s.variant).find((v) => v);
             if (lastVariant) activeWorkout.variantByExercise[exerciseName] = lastVariant;
+          }
+          // Start side (left/right first) carries forward the same way.
+          if (!activeWorkout.startSideByExercise) activeWorkout.startSideByExercise = {};
+          if (featureEnabled("startSide") && !(exerciseName in activeWorkout.startSideByExercise)) {
+            const lastSide = data.sets.map((s) => s.side).filter(Boolean).pop();
+            if (lastSide) activeWorkout.startSideByExercise[exerciseName] = lastSide;
           }
           // Handle/grip carry forward the same way (2026-10-06).
           if (!activeWorkout.handleByExercise) activeWorkout.handleByExercise = {};
           if (!activeWorkout.gripByExercise) activeWorkout.gripByExercise = {};
-          if (!(exerciseName in activeWorkout.handleByExercise)) {
+          if (featureEnabled("handleGrip") && !(exerciseName in activeWorkout.handleByExercise)) {
             const lastHandle = data.sets.map((s) => s.handle).filter(Boolean).pop(); // last set = where you ended up
             if (lastHandle) activeWorkout.handleByExercise[exerciseName] = lastHandle;
           }
-          if (!(exerciseName in activeWorkout.gripByExercise)) {
+          if (featureEnabled("handleGrip") && !(exerciseName in activeWorkout.gripByExercise)) {
             const lastGrip = data.sets.map((s) => s.grip).filter(Boolean).pop();
             if (lastGrip) activeWorkout.gripByExercise[exerciseName] = lastGrip;
           }
@@ -1214,11 +1223,15 @@ function captureRealRestOnPriorSet(exerciseName, confirmedAt) {
 
 function logSet(exerciseName, index, fields) {
   const setOrder = index + 1;
-  const restSeconds = restSecondsFor(exerciseName, index);
-  const rpe = pendingRpeByExercise[exerciseName] ? pendingRpeByExercise[exerciseName][index] : null;
+  const restOn = featureEnabled("restTimer");
+  const restSeconds = restOn ? restSecondsFor(exerciseName, index) : null;
+  const rpe = featureEnabled("rpe") && pendingRpeByExercise[exerciseName] ? pendingRpeByExercise[exerciseName][index] : null;
   const setType = pendingSetTypeByExercise[exerciseName] ? pendingSetTypeByExercise[exerciseName][index] : null;
   const unilateral = isPositionUnilateral(exerciseName, index);
-  const side = unilateral ? ((pendingSideByExercise[exerciseName] || {})[index] || null) : null;
+  // Start side is an exercise-wide choice (activeWorkout.startSideByExercise);
+  // the per-position map only holds the value of a set reopened for editing.
+  const sideOverride = pendingSideByExercise[exerciseName] ? pendingSideByExercise[exerciseName][index] : undefined;
+  const side = unilateral ? (sideOverride !== undefined ? sideOverride : ((activeWorkout.startSideByExercise || {})[exerciseName] || null)) : null;
   const assistedReps = setType === "assisted" ? ((pendingAssistedRepsByExercise[exerciseName] || {})[index] ?? null) : null;
   const variantOverride = pendingVariantByExercise[exerciseName] ? pendingVariantByExercise[exerciseName][index] : undefined;
   const variant = variantOverride !== undefined ? variantOverride : ((activeWorkout.variantByExercise || {})[exerciseName] || null);
@@ -1281,7 +1294,7 @@ function logSet(exerciseName, index, fields) {
   // correct, identical content and gets skipped by
   // refreshWorkoutNotificationContent's own dedup guard instead of posting
   // garbage.
-  startRestTimer(exerciseName, index, restSeconds);
+  if (restOn) startRestTimer(exerciseName, index, restSeconds);
   renderActiveScreen();
   // Deferred one tick, not called synchronously (2026-09-17 fix, found live):
   // the numpad's own goNext() calls closeDockedPanel() -- which fires an

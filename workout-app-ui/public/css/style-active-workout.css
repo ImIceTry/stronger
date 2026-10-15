@@ -907,3 +907,12 @@ button.confirm-btn.confirmed:active .confirmed-check { color: var(--blue); }
 }
 
 
+
+/* Previous column switched off (Settings -> Workout screen features):
+   the same table without the PREVIOUS track. */
+.exercise-card.no-prev .set-table-header,
+.exercise-card.no-prev .set-row {
+  grid-template-columns: 0.6fr 1.5fr 1.5fr 0.6fr;
+}
+.exercise-name-link:disabled,
+button.col-set:disabled { cursor: default; }

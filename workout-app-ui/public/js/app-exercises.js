@@ -288,7 +288,7 @@ async function loadExerciseHistoryTab(name) {
       .map((session) => {
         const lines = session.sets
           .map((s) => {
-            const tag = (s.set_type === "drop" ? " (D)" : s.set_type === "failure" ? " (F)" : s.set_type === "warmup" ? " (W)" : s.set_type === "assisted" ? ` (A${s.assisted_reps != null ? s.assisted_reps : ""})` : "") + (s.unilateral ? " (U)" : "") + (s.side === "left" ? " (L)" : s.side === "right" ? " (R)" : "");
+            const tag = (s.set_type === "drop" ? " (D)" : s.set_type === "failure" ? " (F)" : s.set_type === "warmup" ? " (W)" : s.set_type === "assisted" ? ` (A${s.assisted_reps != null ? s.assisted_reps : ""})` : "") + (s.unilateral ? " (U)" : "") + (s.side === "left" ? " (L→R)" : s.side === "right" ? " (R→L)" : "");
             const rpeTag = s.rpe != null ? ` @ ${s.rpe}` : "";
             const setNumHtml = `<span class="ed-history-set-num">${s.set_order}${tag}</span>`;
             const left = s.duration_sec != null
@@ -306,9 +306,11 @@ async function loadExerciseHistoryTab(name) {
             return `<div class="ed-history-set-line"><span>${left}</span><span>${right}</span></div>${pillsHtml}`;
           })
           .join("");
+        const gear = exerciseGearLabel(session.sets);
         return `<div class="detail ed-history-card">
           <h3>${escapeHtml(session.workout_name)}</h3>
           <div class="ed-history-date">${escapeHtml(formatLongDateTime(session.started_at))}</div>
+          ${gear ? `<div class="wd-exercise-gear">${escapeHtml(gear)}</div>` : ""}
           <div class="ed-history-col-header"><span>Sets Performed</span><span>1RM</span></div>
           ${lines}
         </div>`;
