@@ -624,3 +624,68 @@ button.confirm-btn:active {
 /* Workout-screen feature toggles (Settings -> Workout screen features). */
 .settings-row-disabled { opacity: 0.45; }
 .settings-radial-intro { margin: 0 0 4px; }
+
+/* Example-exercise previews on Settings -> Workout Screen. A static mock of
+   the real workout screen (same classes), pinned under the top bar while the
+   switches of its section scroll past. */
+.settings-row-where { color: var(--blue); font-size: 12px; margin-top: 2px; }
+.settings-row-icon { width: 18px; height: 18px; vertical-align: -4px; margin-right: 8px; color: var(--text-secondary); }
+.settings-row-text { cursor: pointer; }
+.pf-group { position: relative; }
+.pf-preview {
+  position: sticky;
+  top: 48px;
+  z-index: 5;
+  margin: 6px 0 8px;
+  padding: 8px 16px 10px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--blue);
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pf-preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 6px;
+}
+.pf-preview .exercise-card { margin: 0; }
+.pf-preview .active-bar { padding: 14px 4px 10px; margin: 0 0 6px; }
+.pf-clock { position: absolute; left: 50%; transform: translateX(-50%); }
+.pf-name-row { margin: 6px 0 0; }
+.pf-workout-name { font-size: 18px; font-weight: 700; }
+.pf-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; }
+.pf-tags-label { color: var(--text-secondary); }
+.pf-tag { background: var(--input-bg); border-radius: 8px; padding: 3px 8px; color: var(--text-secondary); }
+.pf-tag b { font-weight: 700; }
+.pf-tag.drop b { color: #ffb020; }
+.pf-tag.failure b { color: #e0503c; }
+.pf-tag-none { color: var(--text-secondary); font-style: italic; }
+.pf-radial-stage { position: relative; height: 236px; }
+.pf-radial-center { left: 50%; top: 50%; }
+.pf-radial .radial-item { transition: none; }
+.pf-radial-note { margin-top: 4px; font-size: 12px; color: var(--text-secondary); text-align: center; }
+.pf-radial.pf-off .pf-radial-stage { opacity: 0.35; }
+.pf-flash { animation: pf-flash 1.6s ease-out; }
+@keyframes pf-flash {
+  0%, 55% { outline: 2px solid var(--blue); outline-offset: 2px; background-color: color-mix(in srgb, var(--blue) 30%, transparent); }
+  100% { outline: 2px solid transparent; outline-offset: 2px; }
+}
+.pf-ghost {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed #e0503c;
+  border-radius: 6px;
+  pointer-events: none;
+  animation: pf-ghost 1.6s ease-out forwards;
+}
+@keyframes pf-ghost { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .pf-flash, .pf-ghost { animation-duration: 0.01s; }
+}

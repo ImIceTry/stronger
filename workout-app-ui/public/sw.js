@@ -4,7 +4,7 @@
 // NOT caching API responses -- this is a live set-logging tool, a stale
 // cached workout/history response would be actively wrong to show, not
 // just outdated, so every real data fetch always goes to the network.
-const CACHE_NAME = "stronger-shell-v47";
+const CACHE_NAME = "stronger-shell-v48";
 // Loop 2 (2026-09-17) split the old monolithic app.js into a dozen plain
 // <script> files -- every one of them needs to be listed here too, or a
 // single flaky-connection fetch failure for just one of them has no
