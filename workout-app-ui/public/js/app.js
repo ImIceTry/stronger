@@ -4,7 +4,7 @@
 // strictly-increasing counter -- keep in sync with android/app/build.gradle's
 // versionName (same string) and versionCode (its own separate integer,
 // Android's own strictly-increasing install-comparison field).
-const APP_VERSION = "0.3.11";
+const APP_VERSION = "0.4.0";
 const REST_SECONDS_DEFAULT = 90;
 // App-wide double-progression rep ceiling (2026-09-24, ImIceTry's ask). See
 // fetchRepCeiling below -- an exercise's own rep_ceiling column overrides
