@@ -309,6 +309,59 @@ def main():
         check(body["muscles"]["biceps"]["sets_7d"] == 2.0, f"biceps: 1 normal + 1 drop pair = 2, got {body['muscles']['biceps']['sets_7d']}")
         check(body["muscles"]["forearms"]["sets_7d"] == 1.0, f"forearms as secondary: 2 x 0.5 = 1, got {body['muscles']['forearms']['sets_7d']}")
 
+        print("last session per machine (last_by_variant, 2026-10-15)")
+
+        def sync_day(day, exercise, sets):
+            status, _ = request("POST", "/api/workouts/sync", {
+                "name": "Push", "started_at": f"2026-02-{day:02d} 08:00:00",
+                "finished_at": f"2026-02-{day:02d} 08:30:00", "duration_sec": 1800,
+                "sets": [{"exercise_name": exercise, "set_order": i + 1, "weight_kg": w, "reps": r, **extra}
+                         for i, (w, r, extra) in enumerate(sets)],
+            })
+            check(status == 200, f"synced {exercise} on 2026-02-{day:02d}")
+
+        def pairs(bucket):
+            return [(s["weight_kg"], s["reps"]) for s in bucket["sets"]]
+
+        sports_art = {"variant": "SportsArt", "weight_ratio": 0.25}
+        life_fitness = {"variant": "LifeFitness"}
+        raise_name = "Machine Test Raise"
+        sync_day(1, raise_name, [(40, 12, sports_art), (40, 8, sports_art), (35, 12, sports_art)])
+        sync_day(3, raise_name, [(20, 10, {})])
+        sync_day(8, raise_name, [(9.25, 12, life_fitness), (9.25, 12, life_fitness), (9.25, 10, life_fitness)])
+        sync_day(12, raise_name, [(40, 12, sports_art), (45, 6, sports_art)])
+        sync_day(15, raise_name, [(10, 12, life_fitness)])
+        status, ctx = request("GET", "/api/exercises/Machine%20Test%20Raise/context")
+        by = ctx.get("last_by_variant")
+        check(status == 200 and by is not None, "context carries last_by_variant")
+        check(set(by) == {"SportsArt", "LifeFitness", ""}, f"one bucket per machine plus the untagged one, got {sorted(by)}")
+        check(ctx["last"]["date"].startswith("2026-02-15") and ctx["last"]["sets"][0]["variant"] == "LifeFitness",
+              "`last` stays the newest session of any machine, older builds keep working")
+        check(by["SportsArt"]["date"].startswith("2026-02-12") and pairs(by["SportsArt"]) == [(40, 12), (45, 6)],
+              f"SportsArt bucket is its own latest session, got {pairs(by['SportsArt'])}")
+        check(by["LifeFitness"]["date"].startswith("2026-02-15") and pairs(by["LifeFitness"]) == [(10, 12)],
+              f"LifeFitness bucket is its own latest session, got {pairs(by['LifeFitness'])}")
+        check(by[""]["date"].startswith("2026-02-03") and pairs(by[""]) == [(20, 10)],
+              f"untagged sets form their own bucket, got {pairs(by[''])}")
+        check(all(b["unit_type"] == "weight_reps" and "workout_id" in b and b["sets"][0]["variant"] in (None, "SportsArt", "LifeFitness")
+                  for b in by.values()), "each bucket has the same shape as `last`")
+
+        print("a session that mixes machines splits into one bucket per machine")
+        mixed_name = "Machine Test Mixed"
+        sync_day(18, mixed_name, [(23.75, 12, {}), (23.75, 10, life_fitness), (23.75, 8, life_fitness)])
+        status, ctx = request("GET", "/api/exercises/Machine%20Test%20Mixed/context")
+        by = ctx["last_by_variant"]
+        check(set(by) == {"", "LifeFitness"}, f"mixed session -> untagged + LifeFitness buckets, got {sorted(by)}")
+        check([s["set_order"] for s in by["LifeFitness"]["sets"]] == [2, 3] and [s["set_order"] for s in by[""]["sets"]] == [1],
+              "each bucket holds only the sets logged on that machine")
+
+        print("an exercise that only ever used one machine behaves as before")
+        status, ctx = request("GET", "/api/exercises/Bench%20Press/context")
+        check(set(ctx["last_by_variant"]) == {""} and ctx["last_by_variant"][""] == ctx["last"],
+              "single untagged history -> one bucket equal to `last`")
+        status, ctx = request("GET", "/api/exercises/Never%20Logged/context")
+        check(ctx["last"] is None and ctx["last_by_variant"] == {}, "unknown exercise -> no buckets")
+
         print("\nAll checks passed.")
     finally:
         proc.terminate()

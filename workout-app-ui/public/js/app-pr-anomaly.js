@@ -15,7 +15,7 @@ function checkForLogAnomaly(exerciseName, set) {
   if (!featureEnabled("anomalyHint")) return;
   if (set.weight_kg == null) return; // reps-only/time exercises have no weight to compare
   if (set.unilateral || set.set_type !== "normal") return; // already self-explained -- don't nag
-  const prev = previousPerformanceCache[exerciseName];
+  const prev = previousFor(exerciseName); // the selected machine's last session, not another machine's scale
   if (!prev || !prev.sets || !prev.sets.length) return;
   // Bilateral-only baseline, same reasoning records.py's own prefer-
   // bilateral-else-unilateral fallback uses -- comparing a real two-handed

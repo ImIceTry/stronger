@@ -14,8 +14,8 @@ android {
         // feature is committed (2026-09-23, ImIceTry's ask -- so it's obvious
         // whether an installed APK is current). Frozen at 1/"1.0" since the
         // very first build until now.
-        versionCode 13
-        versionName "0.4.0"
+        versionCode 14
+        versionName "0.4.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

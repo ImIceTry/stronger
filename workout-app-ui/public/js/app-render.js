@@ -302,6 +302,8 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
       rowRpe = prevForIndex.rpe;
       if (!pendingRpeByExercise[exerciseName]) pendingRpeByExercise[exerciseName] = {};
       pendingRpeByExercise[exerciseName][position] = rowRpe;
+      if (!seededRpeByExercise[exerciseName]) seededRpeByExercise[exerciseName] = {};
+      seededRpeByExercise[exerciseName][position] = rowRpe;
     }
     const rowSetType = exercisePendingSetType[position] || "normal";
     // RPE badge sits on the reps box's own corner (2026-09-11, moved off

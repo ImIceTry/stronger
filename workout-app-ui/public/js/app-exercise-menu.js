@@ -378,6 +378,19 @@ async function knownVariantsFor(exerciseName, ratios) {
   return names;
 }
 
+// A machine change makes the previous session the PREVIOUS column shows a different one, but the
+// ghost RPE was copied into pendingRpeByExercise on the first render and would stay for good.
+// Drops the ones nobody touched (still equal to what was seeded); a pick the user made differs
+// from the seed and stays, like a typed weight or reps does.
+function dropSeededRpe(exerciseName) {
+  const seeded = seededRpeByExercise[exerciseName] || {};
+  const pending = pendingRpeByExercise[exerciseName] || {};
+  Object.keys(seeded).forEach((position) => {
+    if (pending[position] === seeded[position]) delete pending[position];
+    delete seeded[position];
+  });
+}
+
 async function openMachineVariantModal(exerciseName) {
   const current = (activeWorkout.variantByExercise || {})[exerciseName] || "";
   // Effective-weight ratio (2026-09-17) -- some machines display a stack/
@@ -444,6 +457,7 @@ async function openMachineVariantModal(exerciseName) {
   modalContent.querySelector("#machine-variant-save").addEventListener("click", async () => {
     const text = input.value.trim();
     if (!activeWorkout.variantByExercise) activeWorkout.variantByExercise = {};
+    if ((activeWorkout.variantByExercise[exerciseName] || "") !== text) dropSeededRpe(exerciseName);
     if (text) {
       activeWorkout.variantByExercise[exerciseName] = text;
     } else {

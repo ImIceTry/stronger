@@ -26,7 +26,7 @@ function collectUnfinishedSets() {
     const confirmedSets = activeWorkout.sets.filter((s) => s.exercise_name === exerciseName);
     const confirmedOrders = new Set(confirmedSets.map((s) => s.set_order));
     const maxConfirmedOrder = confirmedSets.length ? Math.max(...confirmedSets.map((s) => s.set_order)) : 0;
-    const previousData = previousPerformanceCache[exerciseName] || null;
+    const previousData = previousFor(exerciseName);
     const prevSetCount = previousData && previousData.sets ? previousData.sets.length : 0;
     const extraSets = extraSetsByExercise[exerciseName] || 0;
     const totalPositions = Math.max(maxConfirmedOrder, prevSetCount, 1) + extraSets;
@@ -53,7 +53,7 @@ function collectUnfinishedSets() {
 function completeOpenSet(exerciseName, index) {
   const unitType = unitTypeCache[exerciseName] || "weight_reps";
   const typed = (pendingInputByExercise[exerciseName] || {})[index];
-  const previousData = previousPerformanceCache[exerciseName] || null;
+  const previousData = previousFor(exerciseName);
   const prevForIndex = previousForSetIndex(previousData, historicalIndexFor(exerciseName, index));
   if (pendingInputByExercise[exerciseName]) delete pendingInputByExercise[exerciseName][index];
   const weight = typed && typed.weight ? parseFloat(typed.weight)

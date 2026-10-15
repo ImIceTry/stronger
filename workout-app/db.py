@@ -706,17 +706,64 @@ def last_performance(conn, exercise_name):
     ).fetchone()
     if last_workout is None:
         return None
-    sets = conn.execute(
-        """SELECT set_order, weight_kg, reps, rpe, set_type, duration_sec, unilateral, variant, side, weight_ratio, assisted_reps, handle, grip FROM sets
-           WHERE workout_id = ? AND exercise_id = ? ORDER BY set_order""",
-        (last_workout["workout_id"], exercise_id),
-    ).fetchall()
     return {
         "workout_id": last_workout["workout_id"],
         "date": last_workout["started_at"],
         "unit_type": unit_type,
-        "sets": [{**dict(s), "unilateral": bool(s["unilateral"])} for s in sets],
+        "sets": _previous_sets(conn, last_workout["workout_id"], exercise_id),
     }
+
+
+def _previous_sets(conn, workout_id, exercise_id, variant=None):
+    """One session's sets of one exercise, in the shape the PREVIOUS column,
+    prefill, Goal line and weight hint read. variant=None keeps every set;
+    a string keeps only the sets logged on that machine ('' = untagged)."""
+    query = """SELECT set_order, weight_kg, reps, rpe, set_type, duration_sec, unilateral, variant, side, weight_ratio, assisted_reps, handle, grip FROM sets
+               WHERE workout_id = ? AND exercise_id = ?"""
+    params = [workout_id, exercise_id]
+    if variant is not None:
+        query += " AND COALESCE(variant, '') = ?"
+        params.append(variant)
+    rows = conn.execute(query + " ORDER BY set_order", params).fetchall()
+    return [{**dict(s), "unilateral": bool(s["unilateral"])} for s in rows]
+
+
+def last_by_variant(conn, exercise_name):
+    """{machine: last session on that machine} for every machine this exercise
+    was ever logged on (2026-10-15, ImIceTry's ask: different weights per
+    machine, so the PREVIOUS column, prefill, Goal line and weight hint must
+    compare like with like). '' is the untagged bucket. Each value has the same
+    shape as last_performance() but holds only that machine's sets; a session
+    that mixed machines appears in each machine's bucket with just its own sets.
+    last_performance() itself is unchanged, so installed builds that predate
+    this keep working."""
+    row = conn.execute(
+        "SELECT id, unit_type FROM exercises WHERE name = ?", (exercise_name.strip(),)
+    ).fetchone()
+    if row is None:
+        return {}
+    exercise_id, unit_type = row["id"], row["unit_type"]
+    # Newest first by workout date (not set id, see last_performance), so the
+    # first row seen for a machine is its latest session.
+    sessions = conn.execute(
+        """SELECT COALESCE(s.variant, '') AS machine, s.workout_id, w.started_at
+           FROM sets s JOIN workouts w ON w.id = s.workout_id
+           WHERE s.exercise_id = ?
+           GROUP BY machine, s.workout_id
+           ORDER BY w.started_at DESC, s.workout_id DESC""",
+        (exercise_id,),
+    ).fetchall()
+    buckets = {}
+    for s in sessions:
+        if s["machine"] in buckets:
+            continue
+        buckets[s["machine"]] = {
+            "workout_id": s["workout_id"],
+            "date": s["started_at"],
+            "unit_type": unit_type,
+            "sets": _previous_sets(conn, s["workout_id"], exercise_id, s["machine"]),
+        }
+    return buckets
 
 
 def exercise_context(conn, exercise_name):
@@ -731,6 +778,7 @@ def exercise_context(conn, exercise_name):
     row = conn.execute("SELECT unit_type FROM exercises WHERE name = ?", (exercise_name.strip(),)).fetchone()
     return {
         "last": last_performance(conn, exercise_name),
+        "last_by_variant": last_by_variant(conn, exercise_name),
         "unit_type": row["unit_type"] if row else None,
         "sticky_note": get_sticky_note(conn, exercise_name),
         "default_unilateral": get_exercise_default_unilateral(conn, exercise_name),

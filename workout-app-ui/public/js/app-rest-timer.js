@@ -293,7 +293,7 @@ function completeSetFromNotification() {
 // notification can compute it for whatever set is next without needing a
 // live DOM row for that exercise's card.
 function computeNextSetPrefill(exerciseName, position) {
-  const previousData = previousPerformanceCache[exerciseName] || null;
+  const previousData = previousFor(exerciseName);
   const prevForIndex = previousForSetIndex(previousData, historicalIndexFor(exerciseName, position));
   const typedInput = (pendingInputByExercise[exerciseName] || {})[position];
   const suggest = featureEnabled("prefill") ? prevForIndex : null;
@@ -319,7 +319,7 @@ function findNextPendingSet() {
     const confirmedSets = activeWorkout.sets.filter((s) => s.exercise_name === exerciseName);
     const confirmedByOrder = new Map(confirmedSets.map((s) => [s.set_order, s]));
     const maxConfirmedOrder = confirmedSets.length ? Math.max(...confirmedSets.map((s) => s.set_order)) : 0;
-    const previousData = previousPerformanceCache[exerciseName] || null;
+    const previousData = previousFor(exerciseName);
     const prevSetCount = previousData && previousData.sets ? previousData.sets.length : 0;
     const extraSets = extraSetsByExercise[exerciseName] || 0;
     const totalPositions = Math.max(maxConfirmedOrder, prevSetCount, 1) + extraSets;

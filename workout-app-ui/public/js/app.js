@@ -4,7 +4,7 @@
 // strictly-increasing counter -- keep in sync with android/app/build.gradle's
 // versionName (same string) and versionCode (its own separate integer,
 // Android's own strictly-increasing install-comparison field).
-const APP_VERSION = "0.4.0";
+const APP_VERSION = "0.4.1";
 const REST_SECONDS_DEFAULT = 90;
 // App-wide double-progression rep ceiling (2026-09-24, ImIceTry's ask). See
 // fetchRepCeiling below -- an exercise's own rep_ceiling column overrides
@@ -27,6 +27,7 @@ const GRAFANA_SNAPSHOT_BASE = (window.APP_CONFIG && window.APP_CONFIG.grafanaSna
 let activeWorkout = null; // { name, started_at, exercises: [names], sets: [], supersets: {name: groupLetter} }
 let editingWorkoutId = null; // set when the active screen is editing an already-synced workout, not logging a new one
 let previousPerformanceCache = {};
+let lastByVariantCache = {}; // exerciseName -> {machine: last session on that machine, "" = untagged} (2026-10-15)
 let stickyNoteCache = {};
 let unitTypeCache = {};
 let defaultUnilateralCache = {};
@@ -53,6 +54,10 @@ let manualTimerHandle = null;
 let manualTimerContext = null; // { remaining, total }
 let elapsedTimerHandle = null;
 let pendingRpeByExercise = {};
+// exerciseName -> {position: RPE}: the values in pendingRpeByExercise that are only the ghost
+// prefill from the previous session, not a pick. A machine change clears exactly these, so the
+// new machine's own last RPE refills them (2026-10-15).
+let seededRpeByExercise = {};
 let pendingSetTypeByExercise = {};
 // Orthogonal to set_type (normal/drop/failure/warmup describe how hard a set
 // was pushed; this is about which limb(s) did the work) -- a one-arm rep
@@ -191,6 +196,7 @@ function blockIfWorkoutRunning(what) {
 // per-exercise map belongs here.
 function resetPerWorkoutState() {
   previousPerformanceCache = {};
+  lastByVariantCache = {};
   stickyNoteCache = {};
   defaultUnilateralCache = {};
   defaultRestCache = {};
@@ -200,6 +206,7 @@ function resetPerWorkoutState() {
   exerciseHistoryForPrCache = {};
   unitTypeCache = {};
   pendingRpeByExercise = {};
+  seededRpeByExercise = {};
   pendingSetTypeByExercise = {};
   pendingUnilateralByExercise = {};
   pendingSideByExercise = {};
@@ -512,6 +519,7 @@ async function fetchExerciseContext(exerciseName) {
   }
   const fill = (cache, value) => { if (!(exerciseName in cache)) cache[exerciseName] = value; };
   fill(previousPerformanceCache, ctx.last || null);
+  fill(lastByVariantCache, ctx.last_by_variant || null);
   fill(unitTypeCache, ctx.unit_type || "weight_reps");
   fill(stickyNoteCache, ctx.sticky_note ?? null);
   fill(defaultUnilateralCache, !!ctx.default_unilateral);
@@ -524,6 +532,22 @@ async function fetchExerciseContext(exerciseName) {
 function exerciseContextLoaded(exerciseName) {
   return [previousPerformanceCache, stickyNoteCache, unitTypeCache, defaultUnilateralCache,
     defaultRestCache, repCeilingCache, variantRatioCache].every((cache) => exerciseName in cache);
+}
+
+// The previous session that the PREVIOUS column, prefill, Goal line, weight
+// hint, next-set notification and finish dialog compare against (2026-10-15,
+// ImIceTry: he trains different weights on different machines). With the
+// machine feature on it is the last session on the machine selected for
+// this exercise; null when that machine has no history yet, so the row shows
+// "-" with no prefill or Goal, because another machine's numbers are on
+// another scale (SportsArt reads 40 where Life Fitness reads 9.25). Feature
+// off, or a backend that predates last_by_variant: the newest session of any
+// machine, as before.
+function previousFor(exerciseName) {
+  const byMachine = lastByVariantCache[exerciseName];
+  if (!byMachine || !featureEnabled("machineVariant")) return previousPerformanceCache[exerciseName] || null;
+  const machine = (activeWorkout && activeWorkout.variantByExercise && activeWorkout.variantByExercise[exerciseName]) || "";
+  return byMachine[machine] || null;
 }
 
 function previousForSetIndex(data, index) {
@@ -639,14 +663,21 @@ function progressionAdvice(prev, ceiling, nextWeight) {
 // a different machine (Leg Extension's lone 53kg from 2024 would otherwise
 // be "next" after today's 50). Reads the full history renderActiveScreen
 // already warms per exercise; falls back to the default step until loaded.
+// Since 2026-10-15 it also counts only weights logged on the machine selected
+// for this exercise (machine feature on): each machine has its own stack steps
+// and scale, and mixing them made the step up from 9.25 on Life Fitness land
+// on SportsArt's 35.
 const NEXT_WEIGHT_WINDOW_DAYS = 180;
 function nextWeightUp(exerciseName, weight, unilateral) {
   if (weight == null) return null;
   const since = fmtDateTime(new Date(Date.now() - NEXT_WEIGHT_WINDOW_DAYS * 86400000));
   const used = new Set();
+  const machineAware = featureEnabled("machineVariant");
+  const machine = (activeWorkout && activeWorkout.variantByExercise && activeWorkout.variantByExercise[exerciseName]) || "";
   (exerciseHistoryForPrCache[exerciseName] || []).forEach((session) => {
     if (session.started_at < since) return;
     session.sets.forEach((s) => {
+      if (machineAware && (s.variant || "") !== machine) return;
       if (s.weight_kg != null && s.set_type !== "warmup" && !!s.unilateral === !!unilateral) used.add(s.weight_kg);
     });
   });
@@ -1075,7 +1106,7 @@ async function renderActiveScreen(opts = {}) {
     // fetches land, and card-level listeners would stack up on each pass.
     wireExerciseCardRadialSwipe(card, exerciseName);
 
-    const cached = previousPerformanceCache[exerciseName];
+    const cached = previousFor(exerciseName);
     // See seedDropHistoryFromPrevious's own comment -- needed on this
     // cache-hit path too (re-adding an exercise already fetched once this
     // session skips the .then() below entirely).
@@ -1095,7 +1126,6 @@ async function renderActiveScreen(opts = {}) {
         // /context merge -- clearing the variant deletes its key, so running
         // this on every later fetch would quietly re-apply a cleared variant.
         if (!hadPrevious && data && data.sets) {
-          seedDropHistoryFromPrevious(exerciseName, data.sets);
           // Machine/variant auto-carry-forward (Function Expansion Plan item
           // 3.2): most exercises only ever have one machine, so this should
           // cost zero taps for the common case -- inherit last time's variant
@@ -1124,8 +1154,12 @@ async function renderActiveScreen(opts = {}) {
             const lastGrip = data.sets.map((s) => s.grip).filter(Boolean).pop();
             if (lastGrip) activeWorkout.gripByExercise[exerciseName] = lastGrip;
           }
+          // Seeded from the machine now selected (the carry-forward above may
+          // just have picked it), not from the newest session of any machine.
+          const seedFrom = previousFor(exerciseName);
+          if (seedFrom && seedFrom.sets) seedDropHistoryFromPrevious(exerciseName, seedFrom.sets);
         }
-        renderExerciseCard(card, exerciseName, data, unitTypeCache[exerciseName] || "weight_reps");
+        renderExerciseCard(card, exerciseName, previousFor(exerciseName), unitTypeCache[exerciseName] || "weight_reps");
       });
     }
 
@@ -1136,7 +1170,7 @@ async function renderActiveScreen(opts = {}) {
     if (!(exerciseName in exerciseHistoryForPrCache)) {
       fetchExerciseHistoryForPr(exerciseName).then(() => {
         if (!activeWorkout) return;
-        renderExerciseCard(card, exerciseName, previousPerformanceCache[exerciseName] || null, unitTypeCache[exerciseName] || "weight_reps");
+        renderExerciseCard(card, exerciseName, previousFor(exerciseName), unitTypeCache[exerciseName] || "weight_reps");
       });
     }
 
