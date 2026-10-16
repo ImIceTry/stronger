@@ -2,7 +2,7 @@
 against a throwaway temp database (never the real one) on its own port,
 exercises every endpoint, and asserts the responses are correct.
 
-Run: .venv/bin/python test_api.py
+Run: python3 test_api.py (the server runs under the same interpreter)
 """
 import json
 import os
@@ -47,7 +47,7 @@ def main():
 
     server_dir = os.path.dirname(os.path.abspath(__file__))
     proc = subprocess.Popen(
-        [os.path.join(server_dir, ".venv", "bin", "python"), "server.py"],
+        [sys.executable, "server.py"],
         cwd=server_dir, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )
     try:
