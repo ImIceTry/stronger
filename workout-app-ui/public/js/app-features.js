@@ -1,7 +1,8 @@
 // ---------- workout-screen feature toggles + radial menu choice ----------
-// Everything optional on the workout screen is listed here once. Every
-// feature defaults to ON, so a fresh install behaves exactly like before;
-// turning one off only hides/disables it, never deletes logged data.
+// Everything optional on the workout screen is listed here once. The original
+// features default to ON; new ones are added with `defaultOff: true`, so each
+// person opts in (AGENTS.md). Turning one off only hides/disables it, never
+// deletes logged data.
 // Core behaviour (logging, editing and deleting sets, adding/removing
 // exercises, finishing, persistence) is deliberately not in this list.
 
@@ -65,6 +66,8 @@ const RADIAL_ACTION_META = [
 ];
 
 const FEATURES_OFF_KEY = "workoutFeaturesOff";
+// defaultOff features the user switched on (the OFF list only covers default-on ones)
+const FEATURES_ON_KEY = "workoutFeaturesOn";
 const RADIAL_KEYS_KEY = "radialMenuKeys";
 const FEATURE_BY_ID = Object.fromEntries(FEATURE_REGISTRY.map((f) => [f.id, f]));
 
@@ -78,8 +81,9 @@ function readStoredList(key) {
 }
 
 function featureSwitchedOff(id) {
-  const off = readStoredList(FEATURES_OFF_KEY);
-  return !!off && off.includes(id);
+  const def = FEATURE_BY_ID[id];
+  if (def && def.defaultOff) return !(readStoredList(FEATURES_ON_KEY) || []).includes(id);
+  return (readStoredList(FEATURES_OFF_KEY) || []).includes(id);
 }
 
 // A feature is on when its own switch is on AND the feature it depends on is
@@ -93,10 +97,12 @@ function featureEnabled(id) {
 }
 
 function setFeatureEnabled(id, on) {
-  if (!FEATURE_BY_ID[id]) return;
-  const off = new Set(readStoredList(FEATURES_OFF_KEY) || []);
-  if (on) off.delete(id); else off.add(id);
-  localStorage.setItem(FEATURES_OFF_KEY, JSON.stringify([...off]));
+  const def = FEATURE_BY_ID[id];
+  if (!def) return;
+  const key = def.defaultOff ? FEATURES_ON_KEY : FEATURES_OFF_KEY;
+  const list = new Set(readStoredList(key) || []);
+  if (on === !!def.defaultOff) list.add(id); else list.delete(id);
+  localStorage.setItem(key, JSON.stringify([...list]));
   applyFeatureVisibility();
   stopDisabledBackgroundWork();
 }
@@ -110,6 +116,7 @@ function stopDisabledBackgroundWork() {
 
 function resetFeatures() {
   localStorage.removeItem(FEATURES_OFF_KEY);
+  localStorage.removeItem(FEATURES_ON_KEY);
   localStorage.removeItem(RADIAL_KEYS_KEY);
   applyFeatureVisibility();
   stopDisabledBackgroundWork();
@@ -437,7 +444,7 @@ function renderWorkoutFeaturesScreen(changedId) {
     <div class="meta settings-radial-intro">Choose what appears in the circle when you swipe right on an exercise.</div>
     <div class="pf-group">${radialPreviewHtml()}${radialRows}</div>
     <div class="settings-row settings-row-clickable" id="workout-features-reset">
-      <div class="settings-row-text"><span>Reset to defaults</span><span class="settings-row-hint">Turns every feature back on and restores the full radial menu</span></div>
+      <div class="settings-row-text"><span>Reset to defaults</span><span class="settings-row-hint">Puts every feature back to its default and restores the full radial menu</span></div>
     </div>`;
   if (changedId) playChangeFlash(changedId, snap);
 }

@@ -34,3 +34,7 @@ build with Gradle. The PWA in a browser needs none of this.
 Suggested first prompt for your Claude: "Read START-HERE.md and
 workout-app-ui/README.md, get this running with Docker, then do a clean
 fresh-install check and fix anything that breaks."
+
+Contributing to the shared code (not just running your own copy): read
+AGENTS.md first (how changes get in, switches, releases; Claude Code loads it
+via CLAUDE.md), then run once: git config core.hooksPath .githooks
