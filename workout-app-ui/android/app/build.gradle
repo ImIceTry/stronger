@@ -11,8 +11,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Changed only by scripts/release.sh (versionName = app.js's
         // APP_VERSION, versionCode +1 per release).
-        versionCode 14
-        versionName "0.4.1"
+        versionCode 15
+        versionName "0.4.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
