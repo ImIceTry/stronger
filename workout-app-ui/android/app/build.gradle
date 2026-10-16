@@ -9,11 +9,8 @@ android {
         applicationId "com.imicetry.workoutapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // Bump versionCode (integer, strictly increasing) and versionName
-        // (matches public/js/app.js's APP_VERSION) every time a fix or
-        // feature is committed (2026-09-23, ImIceTry's ask -- so it's obvious
-        // whether an installed APK is current). Frozen at 1/"1.0" since the
-        // very first build until now.
+        // Changed only by scripts/release.sh (versionName = app.js's
+        // APP_VERSION, versionCode +1 per release).
         versionCode 14
         versionName "0.4.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

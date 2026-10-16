@@ -4,7 +4,10 @@
 // NOT caching API responses -- this is a live set-logging tool, a stale
 // cached workout/history response would be actively wrong to show, not
 // just outdated, so every real data fetch always goes to the network.
-const CACHE_NAME = "stronger-shell-v50";
+// app.js registers this file as sw.js?build=<commit>, so every deploy is a new
+// worker with its own cache; a working copy runs as "dev".
+const BUILD_ID = new URL(self.location.href).searchParams.get("build") || "dev";
+const CACHE_NAME = `stronger-shell-${BUILD_ID}`;
 // Loop 2 (2026-09-17) split the old monolithic app.js into a dozen plain
 // <script> files -- every one of them needs to be listed here too, or a
 // single flaky-connection fetch failure for just one of them has no
@@ -19,7 +22,7 @@ const CACHE_NAME = "stronger-shell-v50";
 // service worker's default scope is the directory it's served from, and
 // this one needs to control the whole site, not just js/.
 const SHELL_ASSETS = [
-  "./", "index.html", "manifest.json",
+  "./", "index.html", "manifest.json", "js/build-info.js",
   "css/style-base.css", "css/style-overlay.css", "css/style-active-workout.css",
   "css/style-history.css", "css/style-exercises.css", "css/style-shared-ui.css",
   "css/style-modals.css",

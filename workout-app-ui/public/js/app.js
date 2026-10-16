@@ -1,10 +1,8 @@
-// Bump the last number every time a fix or feature is committed (2026-09-23,
-// ImIceTry's ask -- so the About screen's version always tells him whether his
-// installed build is current). No semantic meaning to the parts, just a
-// strictly-increasing counter -- keep in sync with android/app/build.gradle's
-// versionName (same string) and versionCode (its own separate integer,
-// Android's own strictly-increasing install-comparison field).
+// Changed only by scripts/release.sh, together with build.gradle's versionName
+// and versionCode. The header shows APP_VERSION+<commit>; the commit comes from
+// js/build-info.js, which deploy and APK builds stamp (scripts/stamp-build.sh).
 const APP_VERSION = "0.4.1";
+const BUILD_ID = self.STRONGER_BUILD || "dev";
 const REST_SECONDS_DEFAULT = 90;
 // App-wide double-progression rep ceiling (2026-09-24, ImIceTry's ask). See
 // fetchRepCeiling below -- an exercise's own rep_ceiling column overrides
@@ -1394,7 +1392,7 @@ document.getElementById("btn-add-exercise-empty").addEventListener("click", () =
 // ---------- boot ----------
 
 (function boot() {
-  document.getElementById("app-version").textContent = `v${APP_VERSION}`;
+  document.getElementById("app-version").textContent = `v${APP_VERSION}+${BUILD_ID}`;
   restoreActiveWorkout();
 
   // Reopens on whichever bottom-nav tab was last showing, not always Home --
@@ -1438,7 +1436,7 @@ document.getElementById("btn-add-exercise-empty").addEventListener("click", () =
   // browsers check) and gives the app shell an offline fallback. Never
   // caches /api/ responses -- see sw.js's own comment.
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {
+    navigator.serviceWorker.register(`sw.js?build=${encodeURIComponent(BUILD_ID)}`).catch(() => {
       // Registration can fail on e.g. a non-HTTPS origin during local dev --
       // the app works fine without it, just without the installability/
       // offline-shell benefits, so this is deliberately silent.
