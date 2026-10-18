@@ -1,7 +1,7 @@
 // Changed only by scripts/release.sh, together with build.gradle's versionName
 // and versionCode. The header shows APP_VERSION+<commit>; the commit comes from
 // js/build-info.js, which deploy and APK builds stamp (scripts/stamp-build.sh).
-const APP_VERSION = "0.4.2";
+const APP_VERSION = "0.4.3";
 const BUILD_ID = self.STRONGER_BUILD || "dev";
 const REST_SECONDS_DEFAULT = 90;
 // App-wide double-progression rep ceiling (2026-09-24, ImIceTry's ask). See
