@@ -49,7 +49,8 @@ function editConfirmedSetField(exerciseName, setOrder, field) {
   const mode = set.duration_sec != null ? "time" : "reps";
   const secondKey = mode === "time" ? "duration" : "reps";
   const fields = [
-    { key: "weight", allowDecimal: true, initialValue: set.weight_kg != null ? String(set.weight_kg) : "", selectOnType: true, confirmedSetOrder: setOrder },
+    { key: "weight", allowDecimal: true, initialValue: set.weight_kg != null ? String(set.weight_kg) : "", selectOnType: true, confirmedSetOrder: setOrder,
+      ...weightHintFieldConfig(exerciseName, previousForSetIndex(previousFor(exerciseName), historicalIndexFor(exerciseName, position))) },
     mode === "time"
       ? { key: "duration", isDuration: true, initialValue: set.duration_sec != null ? secondsToMmssBuffer(set.duration_sec) : "", selectOnType: true, confirmedSetOrder: setOrder }
       : { key: "reps", allowDecimal: false, initialValue: set.reps != null ? String(set.reps) : "", selectOnType: true, confirmedSetOrder: setOrder },

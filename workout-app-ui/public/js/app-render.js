@@ -154,6 +154,20 @@ function pendingGoalText(exerciseName, prev, unitType, mode, rowSetType) {
   return target ? `${target.weight_kg}kg &times; ${target.reps}` : "";
 }
 
+// The KG step's suggestion badge (instead of the RPE key), shared by a pending
+// row and a finished set's edit so both show the same keypad. prev is last
+// time's set at this position; its weight, reps and RPE plus the exercise's
+// rep ceiling decide "up / hold / down".
+function weightHintFieldConfig(exerciseName, prev) {
+  return {
+    numpadSlot: featureEnabled("weightHint") ? "weightHint" : "none",
+    weightHintRpe: prev ? prev.rpe : null,
+    weightHintWeight: prev ? prev.weight_kg : null,
+    weightHintReps: prev ? prev.reps : null,
+    weightHintCeiling: repCeilingCache[exerciseName] ?? REP_CEILING_DEFAULT,
+  };
+}
+
 function renderExerciseCard(card, exerciseName, previousData, unitType, justConfirmedThisRender) {
   unitType = unitType || "weight_reps";
   const showPrev = featureEnabled("previousColumn");
@@ -221,7 +235,11 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
       // "failure" stays rendered too (not just accepted by validation) --
       // the 2 real historical sets still tagged with it need to keep
       // reading correctly, even though it's no longer a creatable option.
-      const typeTag = (s.set_type === "drop" ? " (D)" : s.set_type === "failure" ? " (F)" : s.set_type === "warmup" ? " (W)" : s.set_type === "assisted" ? ` (A${s.assisted_reps != null ? s.assisted_reps : ""})` : "") + (s.unilateral ? " (U)" : "") + (s.side === "left" ? " (L→R)" : s.side === "right" ? " (R→L)" : "");
+      // Small letters after the number, not "(U) (L→R)" text: the SET column
+      // is narrow and long tags pushed the row out of line. The side is left
+      // to the card's "Start left/right" chip.
+      const tagLetters = (s.set_type === "drop" ? "D" : s.set_type === "failure" ? "F" : s.set_type === "warmup" ? "W" : s.set_type === "assisted" ? `A${s.assisted_reps != null ? s.assisted_reps : ""}` : "") + (s.unilateral ? "U" : "");
+      const typeTag = tagLetters ? `<span class="set-tag">${tagLetters}</span>` : "";
       // Only the row matching this exact confirm action plays its mount
       // animation (2026-09-12 fix, see justConfirmedKey) -- every other
       // already-confirmed row on the screen renders in its plain settled
@@ -471,20 +489,8 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
       const openWeightSecondNumpad = (startKey) => {
         const fields = [
           {
-            key: "weight", allowDecimal: true, initialValue: readField(weightField), numpadSlot: featureEnabled("weightHint") ? "weightHint" : "none", selectOnType: true,
-            weightHintRpe: prevForIndex ? prevForIndex.rpe : null,
-            // Double-progression data (2026-09-18, ImIceTry's own ask) -- lets
-            // the RPE>=9.5 branch tell "genuinely hit your ceiling at this
-            // weight" apart from "just used too much weight for the reps."
-            weightHintWeight: prevForIndex ? prevForIndex.weight_kg : null,
-            weightHintReps: prevForIndex ? prevForIndex.reps : null,
-            // 2026-09-24, ImIceTry's ask: replaces the old "beat your own
-            // historical best reps" comparison, which broke once your
-            // best-ever at a weight was itself an RPE-10 grind -- a fixed
-            // ceiling instead, per-exercise overridable via repCeilingCache.
-            weightHintCeiling: exerciseName in repCeilingCache
-              ? (repCeilingCache[exerciseName] != null ? repCeilingCache[exerciseName] : REP_CEILING_DEFAULT)
-              : REP_CEILING_DEFAULT,
+            key: "weight", allowDecimal: true, initialValue: readField(weightField), selectOnType: true,
+            ...weightHintFieldConfig(exerciseName, prevForIndex),
           },
           secondFieldConfig,
         ];

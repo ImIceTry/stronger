@@ -212,9 +212,11 @@
    now showing ("48kg × 9 @9.5"), its old width wrapped onto two lines; SET
    and CHECK only ever hold a single digit/letter or a small icon, so they
    give up width more cheaply than KG/REPS' own numpad-field boxes would. */
+/* minmax(0, …): a plain fr track grows to fit its content, so one wide cell
+   shifted only its own row out of line with the header and the other rows. */
 .set-table-header, .set-row {
   display: grid;
-  grid-template-columns: 0.45fr 1.55fr 1.1fr 1.1fr 0.45fr;
+  grid-template-columns: minmax(0, 0.45fr) minmax(0, 1.55fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 0.45fr);
   gap: 10px;
   align-items: center;
 }
@@ -229,7 +231,8 @@
 /* A single-digit set number left-aligned under the 3-letter "SET" label
    reads as drifted left even though both start at the same edge -- center
    both consistently instead (2026-09-10). */
-.col-set { text-align: center; }
+.col-set { text-align: center; white-space: nowrap; }
+.col-set .set-tag { font-size: 0.7em; margin-left: 1px; vertical-align: super; line-height: 0; }
 
 /* On a pending row, .col-set is a real button now (2026-09-10) -- tap the
    set number to pick Warm-up/Drop/Failure, replacing the old separate
@@ -912,7 +915,7 @@ button.confirm-btn.confirmed:active .confirmed-check { color: var(--blue); }
    the same table without the PREVIOUS track. */
 .exercise-card.no-prev .set-table-header,
 .exercise-card.no-prev .set-row {
-  grid-template-columns: 0.6fr 1.5fr 1.5fr 0.6fr;
+  grid-template-columns: minmax(0, 0.6fr) minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, 0.6fr);
 }
 .exercise-name-link:disabled,
 button.col-set:disabled { cursor: default; }
