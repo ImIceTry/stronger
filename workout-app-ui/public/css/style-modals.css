@@ -796,3 +796,79 @@
 .ms-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .ms-row .ms-name { flex: 3; }
 .ms-row .ms-value { flex: 2; }
+
+/* Plate calculator line above the numpad (feature "plateCalculator") */
+.plates-line {
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  background: var(--bg-elevated, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.plates-line:empty { display: none; }
+
+/* Plate settings and warm-up ramp modals */
+.plate-field { display: block; margin: 12px 0 4px; font-size: 13px; color: var(--text-secondary); }
+.plate-field input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 12px;
+  font-size: 16px;
+  font-family: inherit;
+}
+.warmup-preview {
+  margin: 12px 0;
+  padding: 10px 12px;
+  min-height: 20px;
+  background: var(--bg-elevated, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Share button above "Looks good, continue" (feature "shareOnFinish") */
+.finish-share-btn { display: block; width: 100%; margin-bottom: 10px; }
+
+/* "Sign in again" banner: never blocks the workout screen. It sits above
+   everything else at the top, and the layers that normally start at the top
+   (page content, top bar, the workout overlay, sticky titles) are moved down by
+   its height, which app-signin-again.js writes to --signin-banner-h. */
+body.signin-banner-on { padding-top: var(--signin-banner-h, 0px); }
+body.signin-banner-on #topbar,
+body.signin-banner-on .active-overlay,
+body.signin-banner-on .section-header.page-title { top: var(--signin-banner-h, 0px); }
+.signin-again-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.35;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.signin-again-banner button {
+  flex-shrink: 0;
+  background: #fff;
+  color: #1a212c;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}

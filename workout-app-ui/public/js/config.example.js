@@ -12,6 +12,19 @@ window.APP_CONFIG = {
   // ignores this value.
   nativeApiBase: "",
 
+  // Optional, native Android build only. A second backend address tried when
+  // nativeApiBase cannot be used (unreachable, or blocked by Cloudflare
+  // Access), for example a VPN address. Reads fall back on any failure; writes
+  // only when Access blocked the request or the call is marked idempotent.
+  nativeApiBaseFallback: "",
+
+  // Optional, native Android build only. Headers sent with every request to
+  // nativeApiBase (never to the fallback), for a backend behind Cloudflare
+  // Access: { "CF-Access-Client-Id": "...", "CF-Access-Client-Secret": "..." }.
+  // Setting this (or nativeApiBaseFallback) switches the build to Capacitor's
+  // native HTTP plugin; leave both unset to keep the plain fetch.
+  accessHeaders: null,
+
   // Base URL to fetch pre-rendered Grafana panel snapshots from (see the
   // Function Expansion & Refactor Plan's "Loop 1 locked decisions" for why
   // these are static snapshots, not live iframes). Leave "" if you don't

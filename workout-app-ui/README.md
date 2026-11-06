@@ -154,6 +154,16 @@ cleanly if left unconfigured.
      fails with no error shown.
   3. `npm install && npx cap sync android`, then build in Android Studio or
      with Gradle.
+  4. Optional, for a backend behind Cloudflare Access (or any gateway that
+     answers CORS preflights itself): also set `accessHeaders` (the two
+     `CF-Access-Client-Id` / `CF-Access-Client-Secret` headers of an Access
+     service token) and, if you want one, `nativeApiBaseFallback` (a second
+     address such as a Tailscale URL) in `config.js`. With either set, the
+     native build sends its requests through Capacitor's native HTTP plugin
+     (no CORS preflight, real timeouts) instead of the WebView's `fetch`; the
+     headers go to `nativeApiBase` only. With neither set nothing changes.
+     The secret stays in `config.js`, which is gitignored. A Grafana
+     snapshot base on the same host as `nativeApiBase` gets the headers too.
 
 ## Tests
 

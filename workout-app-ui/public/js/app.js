@@ -755,6 +755,7 @@ function openNumpad(exerciseName, index, fields, onDone, startIndex, onCancel) {
       // Stays ghost-styled through typing too now (2026-09-10 revision) --
       // only actually confirming the set solidifies it, see fieldsHtml.
     });
+    if (typeof updatePlatesLine === "function") updatePlatesLine(currentField(), values[fieldIndex]);
     persistTyped();
   };
 
@@ -861,6 +862,7 @@ function openNumpad(exerciseName, index, fields, onDone, startIndex, onCancel) {
       : "";
     openDockedPanel(`
       ${weightHintPopupHtml}
+      ${typeof platesLineHtml === "function" ? platesLineHtml(exerciseName, currentField()) : ""}
       <div class="numpad-grid">
         <button class="numpad-key" data-digit="1">1</button>
         <button class="numpad-key" data-digit="2">2</button>

@@ -22,7 +22,7 @@ async function apiGet(path) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), GET_TIMEOUT_MS);
     try {
-      res = await fetch(API_BASE + path, { signal: controller.signal });
+      res = await apiFetch(path, { signal: controller.signal, timeoutMs: GET_TIMEOUT_MS });
     } finally {
       clearTimeout(timeout);
     }
@@ -58,7 +58,7 @@ async function loadGrafanaSnapshots() {
       const timeout = setTimeout(() => controller.abort(), GET_TIMEOUT_MS);
       let res;
       try {
-        res = await fetch(`${GRAFANA_SNAPSHOT_BASE}${name}.png`, { signal: controller.signal });
+        res = await urlFetch(`${GRAFANA_SNAPSHOT_BASE}${name}.png`, { signal: controller.signal, timeoutMs: GET_TIMEOUT_MS, responseType: "blob" });
       } finally {
         clearTimeout(timeout);
       }
@@ -88,11 +88,13 @@ async function syncWorkout(payload) {
   const timeout = setTimeout(() => controller.abort(), SYNC_TIMEOUT_MS);
   let res;
   try {
-    res = await fetch(API_BASE + "/api/workouts/sync", {
+    res = await apiFetch("/api/workouts/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: controller.signal,
+      timeoutMs: SYNC_TIMEOUT_MS,
+      idempotent: true,
     });
   } finally {
     clearTimeout(timeout);
@@ -102,7 +104,7 @@ async function syncWorkout(payload) {
 }
 
 async function apiPut(path, body) {
-  const res = await fetch(API_BASE + path, {
+  const res = await apiFetch(path, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -112,7 +114,7 @@ async function apiPut(path, body) {
 }
 
 async function apiPost(path, body) {
-  const res = await fetch(API_BASE + path, {
+  const res = await apiFetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body || {}),
@@ -122,7 +124,7 @@ async function apiPost(path, body) {
 }
 
 async function apiDelete(path) {
-  const res = await fetch(API_BASE + path, { method: "DELETE" });
+  const res = await apiFetch(path, { method: "DELETE" });
   if (!res.ok) {
     // Real, actionable 400s (e.g. "can't delete, a template still points
     // at this") used to get swallowed into a generic status-code-only
@@ -141,7 +143,7 @@ async function apiDelete(path) {
 }
 
 async function updateWorkout(workoutId, payload) {
-  const res = await fetch(`${API_BASE}/api/workouts/${workoutId}`, {
+  const res = await apiFetch(`/api/workouts/${workoutId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

@@ -26,6 +26,7 @@ const FEATURE_REGISTRY = [
   { id: "unilateral", group: "sets", label: "Unilateral sets", desc: "One-sided flag per set and 'always unilateral' per exercise" },
   { id: "startSide", group: "sets", label: "Starting side", desc: "Which side to start with on one-sided exercises", requires: "unilateral" },
   { id: "fieldModeToggle", group: "sets", label: "Reps / time switch", desc: "Tap the REPS header to switch an exercise to timed sets" },
+  { id: "plateCalculator", group: "sets", defaultOff: true, label: "Plate calculator", desc: "Plates per side above the numpad while you type a weight", where: "Above the numpad, on barbell exercises" },
 
   { id: "restTimer", group: "timers", label: "Rest timer", desc: "Rest bars between sets, automatic countdown after each set" },
   { id: "manualTimer", group: "timers", label: "Stopwatch / timer button", desc: "Standalone timer in the top bar" },
@@ -40,6 +41,7 @@ const FEATURE_REGISTRY = [
   { id: "replaceExercise", group: "exercise", label: "Replace exercise", desc: "Swap an exercise for another one mid-workout", where: "The \u22ef menu on an exercise, then Replace exercise." },
   { id: "reorder", group: "exercise", label: "Reorder exercises", desc: "Long-press an exercise bar or use the workout menu", where: "Long-press an exercise name, or use the \u22ef menu next to the workout name." },
   { id: "exerciseLink", group: "exercise", label: "Exercise name opens details", desc: "Tapping the exercise name opens its history and charts" },
+  { id: "warmupRamp", group: "exercise", defaultOff: true, requires: "setWarmup", label: "Warm-up ramp", desc: "Adds warm-up sets (40, 60 and 80 percent of your working weight) from the exercise menu", where: "The \u22ef menu of an exercise, before its first set is logged" },
 
   { id: "workoutNotes", group: "workout", label: "Workout notes", desc: "One note for the whole workout", where: "The \u22ef menu next to the workout name." },
   { id: "radialGesture", group: "workout", label: "Radial menu swipe", desc: "Swipe right on an exercise card to open the quick-action circle", where: "Swipe right on any exercise card." },
@@ -48,6 +50,7 @@ const FEATURE_REGISTRY = [
   { id: "anomalyHint", group: "feedback", label: "Low-weight warning", desc: "Asks about a set far below your usual weight", where: "Appears right after you log a weight far below your usual." },
   { id: "finishSummary", group: "feedback", label: "Finish summary", desc: "Review screen with a comparison to last time before saving", where: "Appears after you tap Finish, before the workout is saved." },
   { id: "workoutNotification", group: "feedback", label: "Workout notification", desc: "Ongoing notification with rest countdown and next set (app only)", where: "In your phone's notification shade while a workout runs." },
+  { id: "shareOnFinish", group: "feedback", defaultOff: true, requires: "finishSummary", label: "Share on finish", desc: "A Share button on the finish summary, before you save", where: "Finish summary" },
 ];
 
 // Canonical order of the radial circle; `feature` is the toggle that must be
@@ -438,8 +441,10 @@ function renderWorkoutFeaturesScreen(changedId) {
     const icon = `<svg class="settings-row-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${EXERCISE_MENU_ICONS[m.icon]}</svg>`;
     return toggleRow("data-radial-key", m.key, m.label, hint, selected.has(m.key), !available, "", icon);
   }).join("");
+  const plateRow = typeof plateSettingsRowHtml === "function" ? plateSettingsRowHtml() : "";
   body.innerHTML = `
     ${groups}
+    ${plateRow ? `<div class="settings-section-title">Plate calculator</div><div class="pf-group">${plateRow}</div>` : ""}
     <div class="settings-section-title">Radial quick menu</div>
     <div class="meta settings-radial-intro">Choose what appears in the circle when you swipe right on an exercise.</div>
     <div class="pf-group">${radialPreviewHtml()}${radialRows}</div>
@@ -466,6 +471,10 @@ document.getElementById("workout-features-body").addEventListener("change", (e) 
   }
 });
 document.getElementById("workout-features-body").addEventListener("click", (e) => {
+  if (e.target.closest("#plate-settings-row")) {
+    openPlateSettingsModal();
+    return;
+  }
   if (e.target.closest("#workout-features-reset")) {
     resetFeatures();
     renderWorkoutFeaturesScreen();

@@ -346,6 +346,7 @@ function showFinishSummary(durationSec) {
       </div>
     `);
     modalContent.classList.add("size-full");
+    if (typeof addFinishShareButton === "function") addFinishShareButton(durationSec, unitTypeByExercise, totalVolume);
     fillFinishComparison(modalContent.querySelector(".finish-compare"), activeWorkout.name, activeWorkout.started_at,
       activeWorkout.sets.slice(), durationSec);
     modalContent.querySelector("#finish-summary-continue").addEventListener("click", () => {

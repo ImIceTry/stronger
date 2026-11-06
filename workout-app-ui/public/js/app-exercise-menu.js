@@ -62,6 +62,8 @@ const EXERCISE_MENU_ICONS = {
   // wrong button before; reusing it here is the fix for both at once.
   replace: `<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>`,
   superset: `<path d="M9 17H7a5 5 0 0 1 0-10h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/>`,
+  // Rising steps: a ramp of warm-up sets.
+  warmupRamp: `<path d="M3 20h4v-4h4v-4h4V8h6"/>`,
   remove: `<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>`,
   // Below: template-menu-only icons (openTemplateOptionsMenu). folder/share
   // reuse the exact paths already drawn for the Home header's own folder
@@ -135,6 +137,8 @@ async function openExerciseOptionsMenu(exerciseName) {
     ["restTimer", sidePanelRow("rest-timer", "restTimer", "Update rest timer")],
     ["machineVariant", sidePanelRow("machine-variant", "machineVariant", hasVariant ? "Change machine/variant" : "Set machine/variant")],
     ["machineSettings", sidePanelRow("machine-settings", "machineSettings", "Machine settings")],
+    ...(typeof exerciseHasLoggedSets === "function" && !exerciseHasLoggedSets(exerciseName)
+      ? [["warmupRamp", sidePanelRow("warmup-ramp", "warmupRamp", "Add warm-up sets")]] : []),
     ["replaceExercise", sidePanelRow("replace", "replace", "Replace exercise")],
     ["supersets", sidePanelRow("superset", "superset", "Create superset")],
     [null, sidePanelRow("remove", "remove", "Remove exercise")],
@@ -176,6 +180,10 @@ async function openExerciseOptionsMenu(exerciseName) {
   onRow("rest-timer", () => {
     closeSidePanel(); // see add-note's own comment above -- same bug, same fix
     openRestTimerModal(exerciseName);
+  });
+  onRow("warmup-ramp", () => {
+    closeSidePanel(); // opens a modal in the same gesture, same fix as add-note above
+    openWarmupRampModal(exerciseName);
   });
   onRow("replace", () => {
     closeSidePanel(); // see add-note's own comment above -- same bug, same fix
