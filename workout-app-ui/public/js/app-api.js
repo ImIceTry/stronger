@@ -28,17 +28,16 @@ function readFailureMayUseStoredCopy(status) {
   return status >= 500 || status === 408 || status === 429 || status === 401 || status === 403 || (status >= 300 && status < 400);
 }
 
-// "Offline sync" (switch): once a request has found the server unreachable, reads
-// that have a stored copy use it at once for the next SERVER_DOWN_MS instead of each
-// waiting out its own timeout (on the Android build that is two tries of 4 s every).
-// A successful request, or the connection coming back, ends it. Without the
-// switch nothing changes.
+// Offline sync: once a request has found the server unreachable, reads that have a
+// stored copy use it at once for the next SERVER_DOWN_MS instead of each waiting out
+// its own timeout (on the Android build that is two tries of 4 s every). A successful
+// request, or the connection coming back, ends it.
 const SERVER_DOWN_MS = 20000;
 let serverDownUntil = 0;
 function markServerDown() { serverDownUntil = Date.now() + SERVER_DOWN_MS; }
 function markServerUp() { serverDownUntil = 0; }
 function serverKnownDown() {
-  return Date.now() < serverDownUntil && typeof featureEnabled === "function" && featureEnabled("offlineSync");
+  return Date.now() < serverDownUntil;
 }
 if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("online", markServerUp);
 
@@ -107,21 +106,18 @@ async function apiGet(path, opts) {
 // workout started or finished with no signal compares against the one just saved.
 // Called by syncWorkout, which is also what replays the offline queue, so a
 // workout that was finished with no signal is covered as soon as it uploads.
-// Always: each exercise's "previous numbers" (/context, small). With "Offline
-// sync" on, also what the finish summary and the next start read: the workout
-// lists, the new workout, the template list, and each exercise's history (the
-// weight hint and PR toast read it; about 100 KB each, which is also what
-// starting a workout fetches). Best effort and in the background: it never
-// delays or fails a save.
+// Each exercise's "previous numbers" (/context, small), and what the finish summary
+// and the next start read: the workout lists, the new workout, the template list,
+// and each exercise's history (the weight hint and PR toast read it; about 100 KB
+// each, which is also what starting a workout fetches). Best effort and in the
+// background: it never delays or fails a save.
 async function refreshStoredAfterSave(payload, workoutId) {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return;
   const names = [...new Set(((payload && payload.sets) || []).map((s) => s.exercise_name).filter(Boolean))];
   const paths = names.map((n) => `/api/exercises/${encodeURIComponent(n)}/context`);
-  if (typeof featureEnabled === "function" && featureEnabled("offlineSync")) {
-    paths.push("/api/workouts", "/api/workouts?include_pr=1&limit=60", "/api/templates?archived=1");
-    if (workoutId != null) paths.push(`/api/workouts/${workoutId}`);
-    names.forEach((n) => paths.push(`/api/exercises/${encodeURIComponent(n)}/history`));
-  }
+  paths.push("/api/workouts", "/api/workouts?include_pr=1&limit=60", "/api/templates?archived=1");
+  if (workoutId != null) paths.push(`/api/workouts/${workoutId}`);
+  names.forEach((n) => paths.push(`/api/exercises/${encodeURIComponent(n)}/history`));
   for (let i = 0; i < paths.length; i += 3) {
     await Promise.all(paths.slice(i, i + 3).map((p) => apiGet(p).catch(() => {})));
   }

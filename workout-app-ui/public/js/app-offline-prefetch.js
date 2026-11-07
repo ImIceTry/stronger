@@ -1,5 +1,5 @@
 // ---------- offline sync: download what a workout needs while there is signal ----------
-// Behind the "offlineSync" switch (AGENTS.md: new behaviour starts off).
+// Part of offline sync: always on, like logging and saving a workout.
 //
 // The stored copies the app falls back to (queue.js GetCache) are only filled
 // by screens you happened to open online. This fills the ones a workout needs,
@@ -57,7 +57,6 @@ function prefetchExerciseNames(paths, got) {
 function runOfflinePrefetch(opts) {
   opts = opts || {};
   if (prefetchRunning) return prefetchRunning;
-  if (typeof featureEnabled === "function" && !featureEnabled("offlineSync")) return Promise.resolve(false);
   if (typeof navigator !== "undefined" && navigator.onLine === false) return Promise.resolve(false);
   if (!opts.force && !prefetchDue(Date.now())) return Promise.resolve(false);
   prefetchRunning = (async () => {

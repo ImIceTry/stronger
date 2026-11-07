@@ -44,7 +44,6 @@ const FEATURE_REGISTRY = [
   { id: "warmupRamp", group: "exercise", defaultOff: true, requires: "setWarmup", label: "Warm-up ramp", desc: "Adds warm-up sets (40, 60 and 80 percent of your working weight) from the exercise menu", where: "The \u22ef menu of an exercise, before its first set is logged" },
 
   { id: "workoutNotes", group: "workout", label: "Workout notes", desc: "One note for the whole workout", where: "The \u22ef menu next to the workout name." },
-  { id: "offlineSync", group: "workout", defaultOff: true, label: "Offline sync", desc: "Setting changes made without signal are saved on the phone and uploaded later; your templates' data is downloaded in the background", where: "Runs by itself, nothing to tap." },
   { id: "radialGesture", group: "workout", label: "Radial menu swipe", desc: "Swipe right on an exercise card to open the quick-action circle", where: "Swipe right on any exercise card." },
 
   { id: "prToast", group: "feedback", label: "PR celebration", desc: "Toast when a set beats your previous best", where: "Pops up right after you log a set that beats your best." },

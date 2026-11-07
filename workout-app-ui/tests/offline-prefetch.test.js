@@ -1,6 +1,6 @@
 // Regression test for public/js/app-offline-prefetch.js (the background download
 // of what a workout needs). Plain script loaded into a vm context; apiGet, the
-// switch, the clock storage and the connection state are mocks.
+// clock storage and the connection state are mocks.
 // Run: node workout-app-ui/tests/offline-prefetch.test.js
 const fs = require("fs");
 const path = require("path");
@@ -13,7 +13,7 @@ const HOUR = 3600 * 1000;
 const enc = encodeURIComponent;
 
 // data: path -> response; a value that is an Error is thrown ({unreachable} marks "no server")
-function load({ data = {}, switchOn = true, online = true, lastRun = null, delay = false } = {}) {
+function load({ data = {}, online = true, lastRun = null } = {}) {
   const calls = [];
   const local = new Map(lastRun == null ? [] : [["offlinePrefetchAt", String(lastRun)]]);
   let inFlight = 0, maxInFlight = 0;
@@ -29,7 +29,6 @@ function load({ data = {}, switchOn = true, online = true, lastRun = null, delay
         return v;
       } finally { inFlight--; }
     },
-    featureEnabled: (id) => id === "offlineSync" && switchOn,
     navigator: { onLine: online },
     localStorage: { getItem: (k) => (local.has(k) ? local.get(k) : null), setItem: (k, v) => local.set(k, v) },
     encodeURIComponent, Date, Set, Map, Promise, Number, String, Array,
@@ -64,8 +63,8 @@ const ctxPath = (n) => `/api/exercises/${enc(n)}/context`;
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
 
-test("switch off, offline, or downloaded less than 6 hours ago: nothing is requested", async () => {
-  for (const opts of [{ switchOn: false }, { online: false }, { lastRun: Date.now() - 5 * HOUR }]) {
+test("offline, or downloaded less than 6 hours ago: nothing is requested", async () => {
+  for (const opts of [{ online: false }, { lastRun: Date.now() - 5 * HOUR }]) {
     const t = load(Object.assign({ data: full() }, opts));
     assert.strictEqual(await t.ctx.runOfflinePrefetch(), false);
     assert.strictEqual(t.calls.length, 0, JSON.stringify(opts));

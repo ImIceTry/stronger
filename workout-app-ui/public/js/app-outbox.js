@@ -1,10 +1,10 @@
 // ---------- outbox: setting changes saved on the phone, uploaded when the server answers ----------
-// Behind the "offlineSync" switch (AGENTS.md: new behaviour starts off).
+// Part of offline sync: always on, like logging and saving a workout.
 //
 // The five per-exercise settings you can change during a workout (sticky note,
 // "always unilateral", default rest, a machine's weight factor, saved machine
 // settings) used to need the server at that moment: with no signal the save
-// failed with an alert and the change was lost. With the switch on, a change
+// failed with an alert and the change was lost. A change
 // that cannot reach the server is applied on the phone at once (the screen, the
 // in-memory caches and the stored copies all show it) and kept here, then
 // uploaded in order when the server answers again. No message appears.
@@ -325,12 +325,10 @@ function outboxKnownValue(name, field) {
 
 const Outbox = createOutbox({ store: outboxIdbStore, send: outboxSend, stored: GetCache, known: outboxKnownValue });
 
-// Drop-in for apiPut at the five call sites in app-exercise-menu.js. With the
-// switch off, or for any other path, it is exactly apiPut.
+// Drop-in for apiPut at the five call sites in app-exercise-menu.js. Any other
+// path is exactly apiPut.
 async function apiPutLater(path, body) {
-  if (!OUTBOX_PATH_RE.test(path) || (typeof featureEnabled === "function" && !featureEnabled("offlineSync"))) {
-    return apiPut(path, body);
-  }
+  if (!OUTBOX_PATH_RE.test(path)) return apiPut(path, body);
   return Outbox.save(path, body);
 }
 
@@ -338,7 +336,7 @@ async function apiPutLater(path, body) {
 // After a workout finished from a template, the template is either made to match it
 // ("update") or just marked as used today. Both need the new workout's id, which
 // only exists once the workout is on the server, so with no signal they used to be
-// dropped (with an alert for "update"). With "Offline sync" on, Finish stores
+// dropped (with an alert for "update"). Now Finish stores
 // the intention with the queued workout (payload.followup) and syncWorkout runs it
 // here as soon as the workout uploads, offline-finished ones included.
 //
@@ -360,6 +358,9 @@ function followupShouldRetry(err) {
 async function runTemplateFollowup(followup, workoutId) {
   try {
     const templateId = await ensureTemplateId(followup.tpl);
+    // "Keep as is" still counts as using the template today (2026-09-22, ImIceTry's
+    // ask): touch-logged bumps the Home card's date without touching
+    // source_workout_id, so the exercise-list preview stays as fixed as before.
     const action = followup.update ? "sync-from-workout" : "touch-logged";
     await apiPut(`/api/templates/${templateId}/${action}`, { workout_id: workoutId });
   } catch (err) {

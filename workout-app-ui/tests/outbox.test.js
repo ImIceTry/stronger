@@ -53,16 +53,15 @@ function fakeIndexedDB() {
 }
 
 // answer(path, opts) -> {ok,status,json} or throws (network error)
-function load({ answer = () => { throw new Error("offline"); }, switchOn = true, online = true, idb = fakeIndexedDB(), known = {} } = {}) {
+function load({ answer = () => { throw new Error("offline"); }, online = true, idb = fakeIndexedDB(), known = {} } = {}) {
   const store = new Map();
   const calls = [];
-  const state = { switchOn, online };
+  const state = { online };
   const ctx = vm.createContext({
     API_BASE: "",
     apiFetch: async (p, opts) => { calls.push({ path: p, method: (opts && opts.method) || "GET", timeoutMs: opts && opts.timeoutMs }); await tick(); return answer(p, opts); },
     GetCache: { get: async (p) => store.get(p), set: async (p, d) => { store.set(p, clone(d)); } },
     updateOfflineBadge: () => {},
-    featureEnabled: (id) => (id === "offlineSync" ? state.switchOn : true),
     navigator: { get onLine() { return state.online; } },
     indexedDB: idb,
     AbortController, setTimeout, clearTimeout, WeakMap, JSON, Promise, Object, Array, Number, String, Math, Error,
@@ -88,18 +87,7 @@ const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
 const peek = async (t) => (await ob(t).pendingCount());
 
-test("switch off: apiPutLater is exactly apiPut (one PUT, nothing queued, an error still throws)", async () => {
-  const t = load({ switchOn: false, answer: () => json({ machine_settings: { "": [["Seat", "4"]] } }) });
-  const r = await t.ctx.apiPutLater(MS, { variant: "", settings: [["Seat", "4"]] });
-  eq(r, { machine_settings: { "": [["Seat", "4"]] } });
-  assert.strictEqual(t.calls.length, 1);
-  assert.strictEqual(await peek(t), 0);
-  const off = load({ switchOn: false, answer: nobody });
-  await assert.rejects(off.ctx.apiPutLater(MS, { variant: "", settings: [] }), /Failed to fetch/);
-  assert.strictEqual(await peek(off), 0);
-});
-
-test("a path that is not one of the five settings is plain apiPut even with the switch on", async () => {
+test("a path that is not one of the five settings is plain apiPut", async () => {
   const t = load({ answer: () => json({ ok: 1 }) });
   await t.ctx.apiPutLater(`/api/exercises/${NAME}/details`, { a: 1 });
   assert.strictEqual(t.calls.length, 1);
