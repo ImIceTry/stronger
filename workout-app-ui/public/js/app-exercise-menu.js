@@ -94,7 +94,7 @@ function startReplaceExercise(exerciseName) {
 async function toggleDefaultUnilateral(exerciseName) {
   const next = !defaultUnilateralCache[exerciseName];
   try {
-    const result = await apiPut(`/api/exercises/${encodeURIComponent(exerciseName)}/default-unilateral`, { default_unilateral: next });
+    const result = await apiPutLater(`/api/exercises/${encodeURIComponent(exerciseName)}/default-unilateral`, { default_unilateral: next });
     defaultUnilateralCache[exerciseName] = !!result.default_unilateral;
     return true;
   } catch (err) {
@@ -349,7 +349,7 @@ function openStickyNoteModal(exerciseName, currentSticky) {
   modalContent.querySelector("#sticky-note-save").addEventListener("click", async () => {
     const text = textarea.value.trim();
     try {
-      const result = await apiPut(`/api/exercises/${encodeURIComponent(exerciseName)}/sticky-note`, { note: text });
+      const result = await apiPutLater(`/api/exercises/${encodeURIComponent(exerciseName)}/sticky-note`, { note: text });
       // Update the cache directly from the server's own response rather than
       // re-fetching -- the variant bar (Phase 1.9) should reflect the new
       // state immediately, not wait for the next cold fetch of this exercise.
@@ -479,7 +479,7 @@ async function openMachineVariantModal(exerciseName) {
       const ratioRaw = ratioInput.value.trim();
       const ratio = ratioRaw ? parseFloat(ratioRaw) : 1;
       try {
-        const result = await apiPut(`/api/exercises/${encodeURIComponent(exerciseName)}/variant-ratios`, { variant: text, ratio });
+        const result = await apiPutLater(`/api/exercises/${encodeURIComponent(exerciseName)}/variant-ratios`, { variant: text, ratio });
         variantRatioCache[exerciseName] = result.ratios;
       } catch (err) {
         alert("Saved the variant, but couldn't save the weight ratio (offline?). Try again once you have signal.");
@@ -526,7 +526,7 @@ async function openMachineSettingsModal(exerciseName) {
       .map((r) => [r.querySelector(".ms-name").value.trim(), r.querySelector(".ms-value").value.trim()])
       .filter((p) => p[0]);
     try {
-      const result = await apiPut(`/api/exercises/${encodeURIComponent(exerciseName)}/machine-settings`, { variant, settings });
+      const result = await apiPutLater(`/api/exercises/${encodeURIComponent(exerciseName)}/machine-settings`, { variant, settings });
       machineSettingsCache[exerciseName] = result.machine_settings || {};
     } catch (err) {
       alert("Couldn't save the machine settings (offline?). Try again once you have signal.");
@@ -747,7 +747,7 @@ function openRestTimerModal(exerciseName) {
     // exactly as before this existed.
     if (saveDefaultCheckbox.checked) {
       try {
-        await apiPut(`/api/exercises/${encodeURIComponent(exerciseName)}/default-rest`, { default_rest_sec: seconds });
+        await apiPutLater(`/api/exercises/${encodeURIComponent(exerciseName)}/default-rest`, { default_rest_sec: seconds });
         defaultRestCache[exerciseName] = seconds;
       } catch (err) {
         alert("Couldn't save as the default (offline?) -- applied to this workout only.");

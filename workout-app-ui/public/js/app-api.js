@@ -28,15 +28,27 @@ function readFailureMayUseStoredCopy(status) {
   return status >= 500 || status === 408 || status === 429 || status === 401 || status === 403 || (status >= 300 && status < 400);
 }
 
-// The stored copy of a GET, or the reason it could not be had.
-async function storedCopyOrThrow(path, failure) {
+// A setting change still waiting in the outbox (app-outbox.js) is part of what
+// the screen must show, even if the server or the stored copy has not seen it yet.
+async function withPendingChanges(path, data) {
+  return typeof Outbox !== "undefined" ? Outbox.overlay(path, data) : data;
+}
+
+// The stored copy of a GET, or the reason it could not be had. With
+// opts.fresh (the background download in app-offline-prefetch.js) there is no
+// fallback: the caller needs to know the server did not answer.
+async function storedCopyOrThrow(path, failure, opts) {
+  if (opts && opts.fresh) {
+    failure.unreachable = true;
+    throw failure;
+  }
   const cached = await GetCache.get(path).catch(() => undefined);
   if (cached === undefined) throw failure;
   updateOfflineBadge(true);
-  return cached;
+  return withPendingChanges(path, cached);
 }
 
-async function apiGet(path) {
+async function apiGet(path, opts) {
   let res;
   try {
     const controller = new AbortController();
@@ -47,20 +59,21 @@ async function apiGet(path) {
       clearTimeout(timeout);
     }
   } catch (networkErr) {
-    return storedCopyOrThrow(path, networkErr);
+    return storedCopyOrThrow(path, networkErr, opts);
   }
   if (!res.ok) {
     const failure = new Error(`GET ${path} -> ${res.status}`);
     if (!readFailureMayUseStoredCopy(res.status)) throw failure;
-    return storedCopyOrThrow(path, failure);
+    return storedCopyOrThrow(path, failure, opts);
   }
   let data;
   try {
     data = await res.json();
   } catch (notJson) {
     // A 200 that is not JSON is a captive-portal or error page, not our API.
-    return storedCopyOrThrow(path, notJson);
+    return storedCopyOrThrow(path, notJson, opts);
   }
+  data = await withPendingChanges(path, data);
   GetCache.set(path, data).catch(() => {});
   updateOfflineBadge(false);
   return data;

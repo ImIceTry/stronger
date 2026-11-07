@@ -27,7 +27,7 @@ const SHELL_ASSETS = [
   "css/style-history.css", "css/style-exercises.css", "css/style-shared-ui.css",
   "css/style-modals.css",
   "js/queue.js", "js/muscle-map.js",
-  "js/app-utils.js", "js/app-features.js", "js/app-exercise-search.js", "js/app-native-http.js", "js/app-signin-again.js", "js/app-api.js", "js/app-nav.js", "js/app-screens.js",
+  "js/app-utils.js", "js/app-features.js", "js/app-exercise-search.js", "js/app-native-http.js", "js/app-signin-again.js", "js/app-api.js", "js/app-outbox.js", "js/app-offline-prefetch.js", "js/app-nav.js", "js/app-screens.js",
   "js/app-overlay.js", "js/app-settings.js", "js/app-profile.js",
   "js/app-history.js", "js/app-exercises.js", "js/app-home.js", "js/app-plan.js",
   "js/app-rest-timer.js", "js/app-finish.js", "js/app-share-finish.js", "js/app-pr-anomaly.js",
