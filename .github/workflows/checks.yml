@@ -1,0 +1,38 @@
+# Runs the repo's own checks on every pull request and on every push to main.
+# Same commands as the "Tests" section of AGENTS.md. No secrets, no deploy, and
+# only the official checkout action; Node and Python come preinstalled on the runner.
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Leak scan (private files, keys, tokens, home addresses)
+        run: scripts/leak-scan.sh
+
+      - name: Frontend tests
+        run: |
+          set -e
+          for t in workout-app-ui/tests/*.test.js; do
+            echo "== $t"
+            node "$t"
+          done
+
+      - name: Backend API test (throwaway database)
+        working-directory: workout-app
+        run: python3 test_api.py
