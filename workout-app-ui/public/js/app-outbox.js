@@ -288,6 +288,7 @@ async function outboxSend(path, body, timeoutMs) {
       signal: controller.signal, timeoutMs, idempotent: true,
     });
   } catch (err) {
+    markServerDown();
     return { status: "unreachable", reason: String((err && err.message) || err) };
   } finally {
     clearTimeout(timer);
@@ -301,7 +302,9 @@ async function outboxSend(path, body, timeoutMs) {
     return { status: "unreachable", reason };
   }
   try {
-    return { status: "ok", data: await res.json() };
+    const data = await res.json();
+    markServerUp();
+    return { status: "ok", data };
   } catch (_e) {
     return { status: "unreachable", reason: "not JSON" }; // a captive-portal page, not our API
   }
@@ -329,4 +332,38 @@ async function apiPutLater(path, body) {
     return apiPut(path, body);
   }
   return Outbox.save(path, body);
+}
+
+// ---- the template part of Finish ----
+// After a workout finished from a template, the template is either made to match it
+// ("update") or just marked as used today. Both need the new workout's id, which
+// only exists once the workout is on the server, so with no signal they used to be
+// dropped (with an alert for "update"). With "Offline sync" on, Finish stores
+// the intention with the queued workout (payload.followup) and syncWorkout runs it
+// here as soon as the workout uploads, offline-finished ones included.
+//
+// HTTP status carried in the Error messages apiPut / apiPost throw ("PUT x -> 502").
+function errorHttpStatus(err) {
+  const m = /-> (\d{3})\b/.exec((err && err.message) || "");
+  return m ? Number(m[1]) : null;
+}
+// "The server did not answer": no HTTP answer at all (network error, timeout), or a
+// gateway/tunnel one. A plain 500 or a 4xx is the server's own answer, so it is final.
+function followupShouldRetry(err) {
+  const status = errorHttpStatus(err);
+  if (status == null) return true;
+  return status === 408 || status === 429 || (status >= 502 && status <= 504) || (status >= 520 && status <= 530);
+}
+
+// Throws only when it should be tried again (see followupShouldRetry); syncWorkout
+// then fails and the queue replays the workout, which the server de-duplicates.
+async function runTemplateFollowup(followup, workoutId) {
+  try {
+    const templateId = await ensureTemplateId(followup.tpl);
+    const action = followup.update ? "sync-from-workout" : "touch-logged";
+    await apiPut(`/api/templates/${templateId}/${action}`, { workout_id: workoutId });
+  } catch (err) {
+    if (followupShouldRetry(err)) throw err;
+    // the template was deleted meanwhile, or the server refused: not worth blocking the workout
+  }
 }

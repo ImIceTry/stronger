@@ -5,7 +5,7 @@
 // by screens you happened to open online. This fills the ones a workout needs,
 // in the background, whenever the app is open with a connection and the last
 // download is more than 6 hours old: Home's lists, every template's exercise
-// list, the exercise list for search, and the "previous numbers and settings"
+// list, the exercise list for search, the workout list the finish summary compares against, and the "previous numbers and settings"
 // (/context) of each exercise in a template or in the last few workouts. It
 // fetches the same paths the screens use, so a stored copy is the one a screen
 // looks for. Nothing is shown; if the server does not answer it stops and tries
@@ -63,7 +63,7 @@ function runOfflinePrefetch(opts) {
   prefetchRunning = (async () => {
     try {
       const got = new Map();
-      await prefetchGet(["/api/workouts", "/api/templates?archived=1", "/api/template-folders", "/api/exercises/all"], got);
+      await prefetchGet(["/api/workouts", "/api/workouts?include_pr=1&limit=60", "/api/templates?archived=1", "/api/template-folders", "/api/exercises/all"], got);
       const templates = ((got.get("/api/templates?archived=1") || {}).templates || []).filter((t) => !t.archived && !t.deleted);
       const recent = ((got.get("/api/workouts") || {}).workouts || []).slice(0, PREFETCH_RECENT_WORKOUTS);
       const detailPaths = [...new Set([

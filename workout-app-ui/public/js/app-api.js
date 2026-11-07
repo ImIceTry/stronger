@@ -28,6 +28,20 @@ function readFailureMayUseStoredCopy(status) {
   return status >= 500 || status === 408 || status === 429 || status === 401 || status === 403 || (status >= 300 && status < 400);
 }
 
+// "Offline sync" (switch): once a request has found the server unreachable, reads
+// that have a stored copy use it at once for the next SERVER_DOWN_MS instead of each
+// waiting out its own timeout (on the Android build that is two tries of 4 s every).
+// A successful request, or the connection coming back, ends it. Without the
+// switch nothing changes.
+const SERVER_DOWN_MS = 20000;
+let serverDownUntil = 0;
+function markServerDown() { serverDownUntil = Date.now() + SERVER_DOWN_MS; }
+function markServerUp() { serverDownUntil = 0; }
+function serverKnownDown() {
+  return Date.now() < serverDownUntil && typeof featureEnabled === "function" && featureEnabled("offlineSync");
+}
+if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("online", markServerUp);
+
 // A setting change still waiting in the outbox (app-outbox.js) is part of what
 // the screen must show, even if the server or the stored copy has not seen it yet.
 async function withPendingChanges(path, data) {
@@ -38,6 +52,7 @@ async function withPendingChanges(path, data) {
 // opts.fresh (the background download in app-offline-prefetch.js) there is no
 // fallback: the caller needs to know the server did not answer.
 async function storedCopyOrThrow(path, failure, opts) {
+  markServerDown();
   if (opts && opts.fresh) {
     failure.unreachable = true;
     throw failure;
@@ -49,6 +64,13 @@ async function storedCopyOrThrow(path, failure, opts) {
 }
 
 async function apiGet(path, opts) {
+  if (!(opts && opts.fresh) && serverKnownDown()) {
+    const known = await GetCache.get(path).catch(() => undefined);
+    if (known !== undefined) {
+      updateOfflineBadge(true);
+      return withPendingChanges(path, known);
+    }
+  }
   let res;
   try {
     const controller = new AbortController();
@@ -73,25 +95,35 @@ async function apiGet(path, opts) {
     // A 200 that is not JSON is a captive-portal or error page, not our API.
     return storedCopyOrThrow(path, notJson, opts);
   }
+  markServerUp();
   data = await withPendingChanges(path, data);
   GetCache.set(path, data).catch(() => {});
   updateOfflineBadge(false);
   return data;
 }
 
-// After a workout is saved on the server, the stored copy of each exercise's
-// "previous" numbers is one workout behind (it was fetched when that workout
-// was started). Fetching it again writes the new numbers through, so the next
-// workout started with no signal compares against the one just saved. Called
-// by syncWorkout, which is also what replays the offline queue, so a workout
-// that was finished with no signal is covered as soon as it uploads.
-// Best effort and in the background: it never delays or fails a save.
-async function refreshStoredExerciseContext(payload) {
+// After a workout is saved on the server, what was stored when it was started is
+// one workout behind. Fetching it again writes the new state through, so the next
+// workout started or finished with no signal compares against the one just saved.
+// Called by syncWorkout, which is also what replays the offline queue, so a
+// workout that was finished with no signal is covered as soon as it uploads.
+// Always: each exercise's "previous numbers" (/context, small). With "Offline
+// sync" on, also what the finish summary and the next start read: the workout
+// lists, the new workout, the template list, and each exercise's history (the
+// weight hint and PR toast read it; about 100 KB each, which is also what
+// starting a workout fetches). Best effort and in the background: it never
+// delays or fails a save.
+async function refreshStoredAfterSave(payload, workoutId) {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return;
   const names = [...new Set(((payload && payload.sets) || []).map((s) => s.exercise_name).filter(Boolean))];
-  for (let i = 0; i < names.length; i += 3) {
-    await Promise.all(names.slice(i, i + 3).map((name) =>
-      apiGet(`/api/exercises/${encodeURIComponent(name)}/context`).catch(() => {})));
+  const paths = names.map((n) => `/api/exercises/${encodeURIComponent(n)}/context`);
+  if (typeof featureEnabled === "function" && featureEnabled("offlineSync")) {
+    paths.push("/api/workouts", "/api/workouts?include_pr=1&limit=60", "/api/templates?archived=1");
+    if (workoutId != null) paths.push(`/api/workouts/${workoutId}`);
+    names.forEach((n) => paths.push(`/api/exercises/${encodeURIComponent(n)}/history`));
+  }
+  for (let i = 0; i < paths.length; i += 3) {
+    await Promise.all(paths.slice(i, i + 3).map((p) => apiGet(p).catch(() => {})));
   }
 }
 
@@ -138,6 +170,10 @@ async function loadGrafanaSnapshots() {
 // workout for a replayed started_at instead of inserting it twice.
 const SYNC_TIMEOUT_MS = 20000;
 async function syncWorkout(payload) {
+  // `followup` (the template part of Finish, see runTemplateFollowup) is for this
+  // app only; the server never sees it.
+  const wire = Object.assign({}, payload);
+  delete wire.followup;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), SYNC_TIMEOUT_MS);
   let res;
@@ -145,7 +181,7 @@ async function syncWorkout(payload) {
     res = await apiFetch("/api/workouts/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(wire),
       signal: controller.signal,
       timeoutMs: SYNC_TIMEOUT_MS,
       idempotent: true,
@@ -155,7 +191,11 @@ async function syncWorkout(payload) {
   }
   if (!res.ok) throw new Error(`sync -> ${res.status}`);
   const result = await res.json();
-  refreshStoredExerciseContext(payload).catch(() => {});
+  // Throws only when the server cannot be reached for it. The workout is saved by
+  // then, but this call fails so the queue keeps the entry and replays it; the
+  // server returns the existing workout for a replayed started_at.
+  if (payload.followup) await runTemplateFollowup(payload.followup, result.id);
+  refreshStoredAfterSave(payload, result.id).catch(() => {});
   return result;
 }
 

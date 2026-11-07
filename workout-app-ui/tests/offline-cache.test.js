@@ -16,7 +16,7 @@ const status = (code) => ({ ok: false, status: code, json: async () => ({ error:
 const notJson = () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError("Unexpected token <"); } });
 
 // answer(path, opts, n) returns a response, or throws to simulate a network error.
-function load(answer, { online = true } = {}) {
+function load(answer, { online = true, switchOn = null, clock = null } = {}) {
   const store = new Map();
   const calls = [];
   const badge = [];
@@ -33,6 +33,8 @@ function load(answer, { online = true } = {}) {
     updateOfflineBadge: (v) => badge.push(v),
     AbortController, setTimeout, clearTimeout, WeakMap,
     navigator: { onLine: online },
+    ...(switchOn === null ? {} : { featureEnabled: (id) => id === "offlineSync" && switchOn.value }),
+    ...(clock === null ? {} : { Date: { now: () => clock.now } }),
     ImageCache: {}, urlFetch: async () => { throw new Error("unused"); }, GRAFANA_SNAPSHOT_BASE: "",
     document: { querySelectorAll: () => [] },
   });
@@ -154,6 +156,91 @@ test("while the device reports no connection, a save does not try the refresh", 
   await t.ctx.syncWorkout(payload(["Lat Pulldown"]));
   for (let i = 0; i < 5; i++) await tick();
   assert.strictEqual(t.calls.filter((c) => c.path.endsWith("/context")).length, 0);
+});
+
+// ---- with "Offline sync" on: what a save refreshes ----
+test("switch on: a save also refreshes the lists, the new workout, the templates and each exercise's history", async () => {
+  const t = load(syncAnswer({ v: 1 }), { switchOn: { value: true } });
+  await t.ctx.syncWorkout(payload(["Lat Pulldown", "Low Row (Machine)"]));
+  for (let i = 0; i < 12; i++) await tick();
+  const asked = t.calls.map((c) => c.path);
+  for (const p of ["/api/workouts", "/api/workouts?include_pr=1&limit=60", "/api/templates?archived=1", "/api/workouts/279",
+    "/api/exercises/Lat%20Pulldown/history", "/api/exercises/Low%20Row%20(Machine)/history"]) assert.ok(asked.includes(p), p);
+});
+
+test("switch off: only the exercises' context is refreshed, as before", async () => {
+  const t = load(syncAnswer({ v: 1 }), { switchOn: { value: false } });
+  await t.ctx.syncWorkout(payload(["Lat Pulldown"]));
+  for (let i = 0; i < 12; i++) await tick();
+  assert.deepStrictEqual(t.calls.filter((c) => c.method === "GET").map((c) => c.path), ["/api/exercises/Lat%20Pulldown/context"]);
+});
+
+// ---- with "Offline sync" on: once the server has been found unreachable, stored reads do not wait again ----
+test("breaker: after one unreachable read, a read that has a stored copy answers at once, with no request", async () => {
+  const sw = { value: true };
+  const t = load(() => { throw new Error("Failed to fetch"); }, { switchOn: sw, clock: { now: 1000 } });
+  t.store.set("/a", { v: "a" });
+  t.store.set("/b", { v: "b" });
+  assert.deepStrictEqual(await t.ctx.apiGet("/a"), { v: "a" });
+  assert.strictEqual(t.calls.length, 1);
+  assert.deepStrictEqual(await t.ctx.apiGet("/b"), { v: "b" });
+  assert.strictEqual(t.calls.length, 1, "the second read made no request");
+  assert.deepStrictEqual(t.badge.slice(-1), [true]);
+});
+
+test("breaker: a read with no stored copy still tries the network", async () => {
+  const t = load(() => { throw new Error("Failed to fetch"); }, { switchOn: { value: true }, clock: { now: 1000 } });
+  t.store.set("/a", { v: "a" });
+  await t.ctx.apiGet("/a");
+  await assert.rejects(t.ctx.apiGet("/never-stored"), /Failed to fetch/);
+  assert.strictEqual(t.calls.length, 2);
+});
+
+test("breaker: ends after 20 seconds, and at the first successful answer", async () => {
+  const clock = { now: 1000 };
+  let up = false;
+  const t = load(() => { if (!up) throw new Error("Failed to fetch"); return ok({ v: "live" }); }, { switchOn: { value: true }, clock });
+  t.store.set("/a", { v: "a" });
+  await t.ctx.apiGet("/a"); // marks the server down at 1000
+  clock.now = 1000 + 19000;
+  await t.ctx.apiGet("/a");
+  assert.strictEqual(t.calls.length, 1, "still inside the 20 s");
+  clock.now = 1000 + 21000;
+  up = true;
+  assert.deepStrictEqual(await t.ctx.apiGet("/a"), { v: "live" });
+  assert.strictEqual(t.calls.length, 2, "after 20 s it asks again");
+  t.store.set("/b", { v: "stored" });
+  assert.deepStrictEqual(await t.ctx.apiGet("/b"), { v: "live" }); // up again: live answers, no shortcut
+  assert.strictEqual(t.calls.length, 3);
+});
+
+test("breaker: one successful answer inside the 20 s ends it at once", async () => {
+  const clock = { now: 1000 };
+  let up = false;
+  const t = load((p) => { if (!up) throw new Error("Failed to fetch"); return ok({ v: "live " + p }); }, { switchOn: { value: true }, clock });
+  t.store.set("/a", { v: "a" });
+  t.store.set("/b", { v: "b" });
+  await t.ctx.apiGet("/a"); // down
+  up = true;
+  await t.ctx.apiGet("/never-stored"); // no copy, so it asks the server and succeeds
+  assert.deepStrictEqual(await t.ctx.apiGet("/b"), { v: "live /b" }, "asked the server again, no stale shortcut");
+});
+
+test("breaker: with the switch off every read still tries the network", async () => {
+  const t = load(() => { throw new Error("Failed to fetch"); }, { switchOn: { value: false }, clock: { now: 1000 } });
+  t.store.set("/a", { v: "a" });
+  t.store.set("/b", { v: "b" });
+  await t.ctx.apiGet("/a");
+  await t.ctx.apiGet("/b");
+  assert.strictEqual(t.calls.length, 2);
+});
+
+test("breaker: the background download (fresh) ignores it and always asks the server", async () => {
+  const t = load(() => { throw new Error("Failed to fetch"); }, { switchOn: { value: true }, clock: { now: 1000 } });
+  t.store.set("/a", { v: "a" });
+  await t.ctx.apiGet("/a");
+  await assert.rejects(t.ctx.apiGet("/a", { fresh: true }), (e) => e.unreachable === true);
+  assert.strictEqual(t.calls.length, 2);
 });
 
 (async () => {

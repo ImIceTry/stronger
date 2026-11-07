@@ -477,6 +477,14 @@ async function finishOrSaveWorkout() {
     sets: applyExerciseNotesToSets(activeWorkout.sets, activeWorkout.exerciseNotes),
   };
 
+  // With "Offline sync" on the template part of Finish travels with the queued
+  // workout and runs when it uploads (syncWorkout -> runTemplateFollowup), so it
+  // works the same with no signal. Off: the original code below.
+  if (templateRef && featureEnabled("offlineSync")) {
+    const tpl = templateRef.tpl;
+    payload.followup = { tpl: { id: tpl.id, name: tpl.name, source_workout_id: tpl.source_workout_id }, update: !!updateTemplateChoice };
+  }
+
   // The finish summary (if it was shown) has been sitting open this whole
   // time -- see its own comment on why its Continue button no longer closes
   // it directly. This is the actual close, now that there's nothing left to
@@ -506,7 +514,7 @@ async function finishOrSaveWorkout() {
     const result = await syncWorkout(payload);
     if (queueId != null) await Queue.remove(queueId).catch(() => {});
     allExercisesCache = null; // times_performed/last_performed may have shifted
-    if (templateRef) {
+    if (templateRef && !payload.followup) {
       try {
         const templateId = await ensureTemplateId(templateRef.tpl);
         if (updateTemplateChoice) {
@@ -527,7 +535,7 @@ async function finishOrSaveWorkout() {
     }
   } catch (err) {
     if (queueId == null) await Queue.enqueue(payload);
-    if (updateTemplateChoice) {
+    if (updateTemplateChoice && !payload.followup) {
       alert("Saved offline -- the template wasn't updated since that needs the new workout's id, which only exists once it syncs. Try updating it manually once you're back online.");
     }
   }

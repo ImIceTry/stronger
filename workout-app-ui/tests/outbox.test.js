@@ -68,6 +68,7 @@ function load({ answer = () => { throw new Error("offline"); }, switchOn = true,
     AbortController, setTimeout, clearTimeout, WeakMap, JSON, Promise, Object, Array, Number, String, Math, Error,
     ImageCache: {}, urlFetch: async () => { throw new Error("unused"); }, GRAFANA_SNAPSHOT_BASE: "",
     document: { querySelectorAll: () => [] },
+    ensureTemplateId: async (tpl) => { if (tpl.id == null) tpl.id = 99; return tpl.id; },
     stickyNoteCache: known.sticky, defaultUnilateralCache: known.uni, defaultRestCache: known.rest,
     variantRatioCache: known.ratios || {}, machineSettingsCache: known.machine || {},
   });
@@ -287,6 +288,69 @@ test("the outbox uses its own database: the workout queue's database is never op
   const t = load({ idb, answer: nobody });
   await t.ctx.apiPutLater(`/api/exercises/${NAME}/default-rest`, { default_rest_sec: 90 });
   eq(Object.keys(idb.dbs), ["workout-app-outbox"]);
+});
+
+// ---- the template part of Finish ----
+const wo = (followup) => ({ name: "Pull", started_at: "2026-11-07 10:00:00", sets: [{ exercise_name: "Lat Pulldown", set_order: 1 }], ...(followup ? { followup } : {}) });
+const syncAnd = (templateAnswer) => (p, opts) => {
+  if (p === "/api/workouts/sync") return json({ id: 42 });
+  if (p.startsWith("/api/templates/")) return templateAnswer(p, opts);
+  return json({}, 404);
+};
+
+test("follow-up: after the workout uploads, 'update' makes the template match it; the server never sees the follow-up", async () => {
+  const t = load({ answer: syncAnd(() => json({})) });
+  let syncBody = null;
+  const inner = t.ctx.apiFetch;
+  t.ctx.apiFetch = async (p, o) => { if (p === "/api/workouts/sync") syncBody = o.body; return inner(p, o); };
+  await t.ctx.syncWorkout(wo({ tpl: { id: 7, name: "Pull", source_workout_id: 3 }, update: true }));
+  assert.ok(syncBody, "the workout was sent");
+  assert.ok(!syncBody.includes("followup"), "the follow-up is for this app only");
+  assert.ok(syncBody.includes("Lat Pulldown"), "the workout itself is sent in full");
+  const put = t.calls.find((c) => c.path === "/api/templates/7/sync-from-workout");
+  assert.ok(put, "sync-from-workout called after the upload");
+});
+
+test("follow-up: 'keep' only marks the template as used today (touch-logged)", async () => {
+  const t = load({ answer: syncAnd(() => json({})) });
+  await t.ctx.syncWorkout(wo({ tpl: { id: 7, name: "Pull", source_workout_id: 3 }, update: false }));
+  assert.ok(t.calls.find((c) => c.path === "/api/templates/7/touch-logged"));
+  assert.ok(!t.calls.find((c) => c.path.endsWith("sync-from-workout")));
+});
+
+test("follow-up: a template that is still virtual (no id yet) is created first, then used", async () => {
+  const t = load({ answer: syncAnd(() => json({})) });
+  await t.ctx.syncWorkout(wo({ tpl: { id: null, name: "Pull", source_workout_id: 3 }, update: false }));
+  assert.ok(t.calls.find((c) => c.path === "/api/templates/99/touch-logged"));
+});
+
+test("follow-up: the body of the template call carries the new workout's id", async () => {
+  const t = load({ answer: syncAnd(() => json({})) });
+  const bodies = [];
+  const inner = t.ctx.apiFetch;
+  t.ctx.apiFetch = async (p, o) => { if (p.startsWith("/api/templates/")) bodies.push(JSON.parse(o.body)); return inner(p, o); };
+  await t.ctx.syncWorkout(wo({ tpl: { id: 7 }, update: true }));
+  eq(bodies, [{ workout_id: 42 }]);
+});
+
+test("follow-up: no answer from the server (network error, 502, 530): syncWorkout fails so the queue keeps the workout and replays it", async () => {
+  for (const failure of [() => { throw new Error("Failed to fetch"); }, () => json({}, 502), () => json({}, 530)]) {
+    const t = load({ answer: syncAnd(failure) });
+    await assert.rejects(t.ctx.syncWorkout(wo({ tpl: { id: 7 }, update: true })));
+  }
+});
+
+test("follow-up: the server's own refusal (404 template gone, 400, plain 500) is final: the workout upload still succeeds", async () => {
+  for (const code of [404, 400, 500]) {
+    const t = load({ answer: syncAnd(() => json({ error: "x" }, code)) });
+    eq(await t.ctx.syncWorkout(wo({ tpl: { id: 7 }, update: true })), { id: 42 });
+  }
+});
+
+test("no follow-up in the payload: no template call at all", async () => {
+  const t = load({ answer: syncAnd(() => json({})) });
+  await t.ctx.syncWorkout(wo(null));
+  assert.ok(!t.calls.some((c) => c.path.startsWith("/api/templates/")));
 });
 
 (async () => {

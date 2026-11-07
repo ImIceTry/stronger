@@ -49,6 +49,7 @@ const home = {
   ] },
   "/api/template-folders": { folders: [] },
   "/api/exercises/all": { exercises: [] },
+  "/api/workouts?include_pr=1&limit=60": { workouts: [] },
 };
 const set = (...names) => ({ sets: names.map((n, i) => ({ exercise_name: n, set_order: i + 1 })) });
 const full = () => Object.assign({}, home, {
@@ -75,7 +76,7 @@ test("due: downloads Home's lists, the exercise list, each active template, rece
   const t = load({ data: full(), lastRun: Date.now() - 7 * HOUR });
   assert.strictEqual(await t.ctx.runOfflinePrefetch(), true);
   const asked = t.calls.map((c) => c.p);
-  for (const p of ["/api/workouts", "/api/templates?archived=1", "/api/template-folders", "/api/exercises/all"]) assert.ok(asked.includes(p), p);
+  for (const p of ["/api/workouts", "/api/workouts?include_pr=1&limit=60", "/api/templates?archived=1", "/api/template-folders", "/api/exercises/all"]) assert.ok(asked.includes(p), p);
   // a template with a source workout: that workout; one without: its exercise list
   assert.ok(asked.includes("/api/workouts/20"));
   assert.ok(asked.includes("/api/templates/2/exercises"));
