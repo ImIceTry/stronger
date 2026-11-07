@@ -1,8 +1,10 @@
 // ---------- api (fetch helpers, cache-aware GET, Grafana snapshot loader) ----------
-// Falls back to the last cached response only when the fetch itself fails
-// (genuinely offline) -- a real HTTP error (404/500 etc.) still throws
-// normally rather than silently serving stale cached data for what might be
-// a real server-side problem.
+// Falls back to the last cached response when the server could not be reached
+// or did not answer as the backend: the fetch itself fails, or the answer is a
+// gateway/server error, a login or captive-portal page (redirect, 401/403, a
+// body that is not JSON). An answer that is the backend's own ("not found",
+// "bad request") still throws normally, so it is never replaced by old data.
+// The offline badge shows whenever the stored copy was served.
 //
 // GET_TIMEOUT_MS (2026-09-14 fix, ImIceTry's own report that Templates/History
 // still showed nothing real-world despite the cache fallback below already
@@ -16,6 +18,24 @@
 // a short abort makes a stalled request fail fast and fall through the same
 // path a real network error already does.
 const GET_TIMEOUT_MS = 4000;
+
+// Statuses that mean "the backend did not answer" rather than "the backend
+// answered no": gateway/tunnel errors (5xx, 408, 429), an Access or captive
+// portal redirect (3xx), a login refusal (401, 403). 404 and 400 are the
+// backend's own answers and must reach the caller (/last 404s on purpose for an
+// exercise without history).
+function readFailureMayUseStoredCopy(status) {
+  return status >= 500 || status === 408 || status === 429 || status === 401 || status === 403 || (status >= 300 && status < 400);
+}
+
+// The stored copy of a GET, or the reason it could not be had.
+async function storedCopyOrThrow(path, failure) {
+  const cached = await GetCache.get(path).catch(() => undefined);
+  if (cached === undefined) throw failure;
+  updateOfflineBadge(true);
+  return cached;
+}
+
 async function apiGet(path) {
   let res;
   try {
@@ -27,18 +47,39 @@ async function apiGet(path) {
       clearTimeout(timeout);
     }
   } catch (networkErr) {
-    const cached = await GetCache.get(path).catch(() => undefined);
-    if (cached !== undefined) {
-      updateOfflineBadge(true);
-      return cached;
-    }
-    throw networkErr;
+    return storedCopyOrThrow(path, networkErr);
   }
-  if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
-  const data = await res.json();
+  if (!res.ok) {
+    const failure = new Error(`GET ${path} -> ${res.status}`);
+    if (!readFailureMayUseStoredCopy(res.status)) throw failure;
+    return storedCopyOrThrow(path, failure);
+  }
+  let data;
+  try {
+    data = await res.json();
+  } catch (notJson) {
+    // A 200 that is not JSON is a captive-portal or error page, not our API.
+    return storedCopyOrThrow(path, notJson);
+  }
   GetCache.set(path, data).catch(() => {});
   updateOfflineBadge(false);
   return data;
+}
+
+// After a workout is saved on the server, the stored copy of each exercise's
+// "previous" numbers is one workout behind (it was fetched when that workout
+// was started). Fetching it again writes the new numbers through, so the next
+// workout started with no signal compares against the one just saved. Called
+// by syncWorkout, which is also what replays the offline queue, so a workout
+// that was finished with no signal is covered as soon as it uploads.
+// Best effort and in the background: it never delays or fails a save.
+async function refreshStoredExerciseContext(payload) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+  const names = [...new Set(((payload && payload.sets) || []).map((s) => s.exercise_name).filter(Boolean))];
+  for (let i = 0; i < names.length; i += 3) {
+    await Promise.all(names.slice(i, i + 3).map((name) =>
+      apiGet(`/api/exercises/${encodeURIComponent(name)}/context`).catch(() => {})));
+  }
 }
 
 // Grafana panel snapshots (2026-09-14, see index.html's Statistics section
@@ -100,7 +141,9 @@ async function syncWorkout(payload) {
     clearTimeout(timeout);
   }
   if (!res.ok) throw new Error(`sync -> ${res.status}`);
-  return res.json();
+  const result = await res.json();
+  refreshStoredExerciseContext(payload).catch(() => {});
+  return result;
 }
 
 async function apiPut(path, body) {
