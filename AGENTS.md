@@ -30,7 +30,11 @@ and preferences stay private; this file is the shared part.
 1. **Claim first.** Anything bigger than a fix gets an issue or a draft pull
    request before the work starts. Check open pull requests for the same files.
 2. **Short-lived branch from `main`, pull request into `main`.** Merge early,
-   behind a switch that is off, rather than keeping a long branch.
+   behind a switch that is off, rather than keeping a long branch. GitHub
+   enforces this: a ruleset on `main` requires a pull request with one approval
+   and blocks force pushes and deleting `main`. Merge with the plain Merge
+   button, not squash or rebase, so a release tag made on the branch stays on
+   `main`.
 3. **The author's agent never approves its own pull request.** The other
    person's agent reviews it in a fresh session with the diff, this file and its
    person's preferences. It signs comments `(Claude for <name>)` and marks each
@@ -64,6 +68,26 @@ and preferences stay private; this file is the shared part.
   entry) instead of growing `app.js` or another big shared file.
 - Tiny polish needs no switch; if the other person would notice or mind, the
   reviewing agent asks for one.
+- The one exception is offline sync (section below): core behaviour, always on.
+
+## Offline (core, always on)
+
+Tracking a workout has to feel the same with and without a connection, so this
+is core behaviour with no switch. Keep it working when you change nearby code.
+
+- Reads go through `apiGet` (`public/js/app-api.js`). When the server cannot be
+  reached, answers with a gateway error, a login or portal page, or a body that
+  is not JSON, it serves the stored copy (`GetCache` in `queue.js`). The
+  backend's own 400 and 404 still throw. A screen that must work offline reads
+  the same paths the background download fetches, so its stored copy exists.
+- A finished workout is queued first and uploaded later. The template part of
+  Finish travels with it (`payload.followup`) and runs when it uploads.
+- A setting changed during a workout (sticky note, always-unilateral, default
+  rest, a machine's weight factor, machine settings) is saved with
+  `apiPutLater`, not `apiPut`: it shows at once and uploads later
+  (`app-outbox.js`). A new per-exercise setting of that kind needs an entry there.
+- `app-offline-prefetch.js` downloads what a workout needs while online.
+- Tests: `outbox.test.js`, `offline-cache.test.js`, `offline-prefetch.test.js`.
 
 ## Lines nobody edits by hand
 
@@ -98,14 +122,23 @@ The hook catches most of these; it is a safety net, not a reason to be careless.
 ## Tests
 
 - Backend: `cd workout-app && python3 test_api.py` (throwaway database, own port).
-- Exercise search: `node workout-app-ui/tests/exercise-search.test.js`.
+- Frontend: every file in `workout-app-ui/tests/` runs with Node, for example
+  `for t in workout-app-ui/tests/*.test.js; do node "$t" || break; done`. New
+  frontend logic gets a test file there; nothing else needs changing for it to
+  be picked up.
 - Leak scan over the whole repo: `scripts/leak-scan.sh`.
 
 ## Releases and deploys
 
 - Release: on an up-to-date `main` with a clean tree, `scripts/release.sh X.Y.Z`
-  (a batch with features: minor bump; only fixes: patch bump), then
-  `git push --follow-tags`. Describe user-visible changes in each pull request.
+  (the default is a patch bump, 0.5.1 to 0.5.2, also for a batch of small
+  features; a minor bump only for something big, such as a new screen or a
+  database migration), then `git push --follow-tags`. `main` only takes pull
+  requests, so run `release.sh` on a short branch, push it with
+  `git push --follow-tags`, and merge the pull request with the plain Merge
+  button. Describe user-visible changes in each pull request.
+- Release tags (`v*`) are never moved, re-created or deleted: servers deploy from
+  them. A mistake is fixed with a new patch release.
 - Each person deploys tagged releases to their own server when they choose. Deploy
   means: check out the tag, run `workout-app-ui/scripts/stamp-build.sh`, and
   restart the backend if `workout-app/` changed. The header then shows
