@@ -133,7 +133,7 @@ The hook catches most of these; it is a safety net, not a reason to be careless.
 - Release: on an up-to-date `main` with a clean tree, `scripts/release.sh X.Y.Z`
   (the default is a patch bump, 0.5.1 to 0.5.2, also for a batch of small
   features; a minor bump only for something big, such as a new screen or a
-  database migration), then `git push --follow-tags`. `main` only takes pull
+  change the other person has to act on), then `git push --follow-tags`. `main` only takes pull
   requests, so run `release.sh` on a short branch, push it with
   `git push --follow-tags`, and merge the pull request with the plain Merge
   button. Describe user-visible changes in each pull request.
