@@ -44,7 +44,7 @@
 .pr-toast {
   position: fixed;
   left: 50%;
-  bottom: 90px;
+  bottom: calc(90px + env(safe-area-inset-bottom, 0px));
   transform: translate(-50%, 12px);
   background: var(--blue);
   color: #fff;

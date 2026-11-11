@@ -38,6 +38,8 @@
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  /* last item (cancel link) stays clear of the home indicator */
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
 .cancel-link {
