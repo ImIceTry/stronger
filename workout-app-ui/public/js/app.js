@@ -25,6 +25,8 @@ const GRAFANA_SNAPSHOT_BASE = (window.APP_CONFIG && window.APP_CONFIG.grafanaSna
 let activeWorkout = null; // { name, started_at, exercises: [names], sets: [], supersets: {name: groupLetter} }
 let editingWorkoutId = null; // set when the active screen is editing an already-synced workout, not logging a new one
 let previousPerformanceCache = {};
+let lastByHandleCache = {}; // exerciseName -> {handle: last session with that handle, any machine, "" = none}
+let lastByMachineHandleCache = {}; // exerciseName -> {machine: {handle: last session}}
 let lastByVariantCache = {}; // exerciseName -> {machine: last session on that machine, "" = untagged} (2026-10-15)
 let stickyNoteCache = {};
 let unitTypeCache = {};
@@ -195,6 +197,8 @@ function blockIfWorkoutRunning(what) {
 function resetPerWorkoutState() {
   previousPerformanceCache = {};
   lastByVariantCache = {};
+  lastByHandleCache = {};
+  lastByMachineHandleCache = {};
   stickyNoteCache = {};
   defaultUnilateralCache = {};
   defaultRestCache = {};
@@ -518,6 +522,8 @@ async function fetchExerciseContext(exerciseName) {
   const fill = (cache, value) => { if (!(exerciseName in cache)) cache[exerciseName] = value; };
   fill(previousPerformanceCache, ctx.last || null);
   fill(lastByVariantCache, ctx.last_by_variant || null);
+  fill(lastByHandleCache, ctx.last_by_handle || null);
+  fill(lastByMachineHandleCache, ctx.last_by_machine_handle || null);
   fill(unitTypeCache, ctx.unit_type || "weight_reps");
   fill(stickyNoteCache, ctx.sticky_note ?? null);
   fill(defaultUnilateralCache, !!ctx.default_unilateral);
@@ -541,7 +547,18 @@ function exerciseContextLoaded(exerciseName) {
 // another scale (SportsArt reads 40 where Life Fitness reads 9.25). Feature
 // off, or a backend that predates last_by_variant: the newest session of any
 // machine, as before.
+// With the handle feature on, a cable exercise narrows that further to the handle selected
+// (no handle = the sets logged without one), so changing the handle swaps the PREVIOUS column
+// like changing the machine does; a handle with no history shows "-".
 function previousFor(exerciseName) {
+  const byHandle = lastByHandleCache[exerciseName];
+  const byMachineHandle = lastByMachineHandleCache[exerciseName];
+  if (byHandle && byMachineHandle && featureEnabled("handleGrip") && exerciseSupportsHandles(exerciseName)) {
+    const handle = (activeWorkout && activeWorkout.handleByExercise && activeWorkout.handleByExercise[exerciseName]) || "";
+    if (!featureEnabled("machineVariant")) return byHandle[handle] || null;
+    const machine = (activeWorkout && activeWorkout.variantByExercise && activeWorkout.variantByExercise[exerciseName]) || "";
+    return (byMachineHandle[machine] || {})[handle] || null;
+  }
   const byMachine = lastByVariantCache[exerciseName];
   if (!byMachine || !featureEnabled("machineVariant")) return previousPerformanceCache[exerciseName] || null;
   const machine = (activeWorkout && activeWorkout.variantByExercise && activeWorkout.variantByExercise[exerciseName]) || "";

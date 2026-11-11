@@ -714,7 +714,7 @@ def last_performance(conn, exercise_name):
     }
 
 
-def _previous_sets(conn, workout_id, exercise_id, variant=None):
+def _previous_sets(conn, workout_id, exercise_id, variant=None, handle=None):
     """One session's sets of one exercise, in the shape the PREVIOUS column,
     prefill, Goal line and weight hint read. variant=None keeps every set;
     a string keeps only the sets logged on that machine ('' = untagged)."""
@@ -724,6 +724,9 @@ def _previous_sets(conn, workout_id, exercise_id, variant=None):
     if variant is not None:
         query += " AND COALESCE(variant, '') = ?"
         params.append(variant)
+    if handle is not None:
+        query += " AND COALESCE(handle, '') = ?"
+        params.append(handle)
     rows = conn.execute(query + " ORDER BY set_order", params).fetchall()
     return [{**dict(s), "unilateral": bool(s["unilateral"])} for s in rows]
 
@@ -766,6 +769,43 @@ def last_by_variant(conn, exercise_name):
     return buckets
 
 
+def last_by_handle(conn, exercise_name):
+    """Same idea as last_by_variant for the cable handle: {"by_handle": {handle:
+    last session with that handle, any machine}, "by_machine_handle": {machine:
+    {handle: ...}}}. '' is the no-handle bucket. The frontend picks the one
+    matching the handle selected for the exercise, so the PREVIOUS column
+    follows a handle change the way it follows a machine change."""
+    row = conn.execute(
+        "SELECT id, unit_type FROM exercises WHERE name = ?", (exercise_name.strip(),)
+    ).fetchone()
+    if row is None:
+        return {"by_handle": {}, "by_machine_handle": {}}
+    exercise_id, unit_type = row["id"], row["unit_type"]
+    sessions = conn.execute(
+        """SELECT COALESCE(s.variant, '') AS machine, COALESCE(s.handle, '') AS handle, s.workout_id, w.started_at
+           FROM sets s JOIN workouts w ON w.id = s.workout_id
+           WHERE s.exercise_id = ?
+           GROUP BY machine, handle, s.workout_id
+           ORDER BY w.started_at DESC, s.workout_id DESC""",
+        (exercise_id,),
+    ).fetchall()
+    by_handle, by_machine_handle = {}, {}
+    for s in sessions:
+        def bucket(machine):
+            return {
+                "workout_id": s["workout_id"],
+                "date": s["started_at"],
+                "unit_type": unit_type,
+                "sets": _previous_sets(conn, s["workout_id"], exercise_id, machine, s["handle"]),
+            }
+        if s["handle"] not in by_handle:
+            by_handle[s["handle"]] = bucket(None)
+        per_machine = by_machine_handle.setdefault(s["machine"], {})
+        if s["handle"] not in per_machine:
+            per_machine[s["handle"]] = bucket(s["machine"])
+    return {"by_handle": by_handle, "by_machine_handle": by_machine_handle}
+
+
 def exercise_context(conn, exercise_name):
     """Everything the active-workout screen needs for one exercise card, in
     one response (2026-09-30) -- replaces the seven GETs the frontend used
@@ -776,9 +816,12 @@ def exercise_context(conn, exercise_name):
     builds that predate this one. unit_type is None for a name with no
     exercises row yet (the frontend defaults it to weight_reps)."""
     row = conn.execute("SELECT unit_type FROM exercises WHERE name = ?", (exercise_name.strip(),)).fetchone()
+    by_handle = last_by_handle(conn, exercise_name)
     return {
         "last": last_performance(conn, exercise_name),
         "last_by_variant": last_by_variant(conn, exercise_name),
+        "last_by_handle": by_handle["by_handle"],
+        "last_by_machine_handle": by_handle["by_machine_handle"],
         "unit_type": row["unit_type"] if row else None,
         "sticky_note": get_sticky_note(conn, exercise_name),
         "default_unilateral": get_exercise_default_unilateral(conn, exercise_name),

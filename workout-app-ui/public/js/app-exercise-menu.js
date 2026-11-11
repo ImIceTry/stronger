@@ -586,6 +586,8 @@ function openHandleGripModal(exerciseName) {
     });
   });
   modalContent.querySelector("#handle-grip-save").addEventListener("click", () => {
+    // A new handle shows another session as PREVIOUS, so the ghost RPE seeded from the old one goes.
+    if (showHandles && (activeWorkout.handleByExercise[exerciseName] || null) !== handle) dropSeededRpe(exerciseName);
     if (handle) activeWorkout.handleByExercise[exerciseName] = handle;
     else delete activeWorkout.handleByExercise[exerciseName];
     if (grip) activeWorkout.gripByExercise[exerciseName] = grip;

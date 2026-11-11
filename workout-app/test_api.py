@@ -362,6 +362,29 @@ def main():
         status, ctx = request("GET", "/api/exercises/Never%20Logged/context")
         check(ctx["last"] is None and ctx["last_by_variant"] == {}, "unknown exercise -> no buckets")
 
+        print("last session per handle (last_by_handle)")
+        rope, vbar = {"handle": "Rope"}, {"handle": "V-bar"}
+        pushdown = "Handle Test Pushdown (Cable)"
+        sync_day(20, pushdown, [(30, 10, rope), (30, 8, rope)])
+        sync_day(22, pushdown, [(45, 10, vbar)])
+        sync_day(24, pushdown, [(32.5, 10, rope), (50, 6, {})])
+        status, ctx = request("GET", "/api/exercises/Handle%20Test%20Pushdown%20(Cable)/context")
+        byh = ctx.get("last_by_handle")
+        check(status == 200 and set(byh) == {"Rope", "V-bar", ""}, f"one bucket per handle plus none, got {sorted(byh or [])}")
+        check(pairs(byh["Rope"]) == [(32.5, 10)] and byh["Rope"]["date"].startswith("2026-02-24"),
+              f"Rope bucket is its latest session with only the Rope sets, got {pairs(byh['Rope'])}")
+        check(pairs(byh["V-bar"]) == [(45, 10)], f"V-bar bucket, got {pairs(byh['V-bar'])}")
+        check(pairs(byh[""]) == [(50, 6)], f"no-handle bucket, got {pairs(byh[''])}")
+        bymh = ctx.get("last_by_machine_handle")
+        check(set(bymh) == {""} and set(bymh[""]) == {"Rope", "V-bar", ""}, f"machine -> handle buckets, got {bymh and sorted(bymh)}")
+        sync_day(26, pushdown, [(20, 12, {**rope, "variant": "Old stack"})])
+        status, ctx = request("GET", "/api/exercises/Handle%20Test%20Pushdown%20(Cable)/context")
+        check(pairs(ctx["last_by_machine_handle"]["Old stack"]["Rope"]) == [(20, 12)] and pairs(ctx["last_by_machine_handle"][""]["Rope"]) == [(32.5, 10)]
+              and pairs(ctx["last_by_handle"]["Rope"]) == [(20, 12)],
+              "per-machine handle buckets stay apart; the any-machine bucket is the newest")
+        status, ctx = request("GET", "/api/exercises/Never%20Logged/context")
+        check(ctx["last_by_handle"] == {} and ctx["last_by_machine_handle"] == {}, "unknown exercise -> no handle buckets")
+
         print("\nAll checks passed.")
     finally:
         proc.terminate()
