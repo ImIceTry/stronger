@@ -38,6 +38,7 @@ const FEATURE_REGISTRY = [
   { id: "machineVariant", group: "exercise", label: "Machine / variant", desc: "Machine or variant chip, with its weight factor" },
   { id: "machineSettings", group: "exercise", label: "Machine settings", desc: "Seat height, pad position and similar settings" },
   { id: "handleGrip", group: "exercise", label: "Cable handle / grip", desc: "Handle and grip chip on cable exercises" },
+  { id: "historyFilter", group: "exercise", defaultOff: true, label: "History filters", desc: "Filter an exercise's history by machine or cable handle; opening it from a workout starts with the current ones selected", where: "An exercise's History tab, or tap its name in a workout." },
   { id: "replaceExercise", group: "exercise", label: "Replace exercise", desc: "Swap an exercise for another one mid-workout", where: "The \u22ef menu on an exercise, then Replace exercise." },
   { id: "reorder", group: "exercise", label: "Reorder exercises", desc: "Long-press an exercise bar or use the workout menu", where: "Long-press an exercise name, or use the \u22ef menu next to the workout name." },
   { id: "exerciseLink", group: "exercise", label: "Exercise name opens details", desc: "Tapping the exercise name opens its history and charts" },

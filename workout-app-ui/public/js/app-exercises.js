@@ -209,8 +209,9 @@ async function runSearch(query) {
 document.getElementById("home-search-btn").addEventListener("click", openSearchScreen);
 document.getElementById("search-back").addEventListener("click", closeTopNavLayer);
 
-function showExerciseDetail(name, onClose) {
+function showExerciseDetail(name, onClose, historyFilter) {
   exerciseDetailCurrentName = name;
+  setExerciseHistoryFilter(name, historyFilter);
   document.getElementById("exercise-detail-name").textContent = name;
   const meta = allExercisesCache && allExercisesCache.find((e) => e.name === name);
   document.getElementById("exercise-detail-subtitle").textContent = meta && meta.category ? meta.category : "";
@@ -243,7 +244,7 @@ function openExerciseDetailFromActiveWorkout(exerciseName) {
   document.getElementById("active-overlay").classList.add("hidden");
   clearInterval(elapsedTimerHandle);
   updateMiniBar();
-  showExerciseDetail(exerciseName, () => showActiveWorkoutOverlay());
+  showExerciseDetail(exerciseName, () => showActiveWorkoutOverlay(), historyFilterFromWorkout(exerciseName));
 }
 
 // showScreen only knows about nav-tab screens; exercise-detail is reached from
@@ -284,7 +285,15 @@ async function loadExerciseHistoryTab(name) {
     // weight/reps/RPE on the left and estimated 1RM on the right, and a
     // separate trophy pill per PR type actually hit (1RM / Weight / Vol.)
     // rather than one combined star -- a set can hit more than one at once.
-    panel.innerHTML = data.sessions
+    let sessions = data.sessions;
+    let chipsHtml = "";
+    if (featureEnabled("historyFilter")) {
+      // Chips come from the whole history, so a filter never hides the other choices.
+      historyFilterPrune(sessions);
+      chipsHtml = historyFilterChipsHtml(sessions);
+      sessions = applyHistoryFilter(sessions);
+    }
+    panel.innerHTML = chipsHtml + sessions
       .map((session) => {
         const lines = session.sets
           .map((s) => {
@@ -316,6 +325,7 @@ async function loadExerciseHistoryTab(name) {
         </div>`;
       })
       .join("");
+    if (chipsHtml) wireHistoryFilterChips(panel, () => loadExerciseHistoryTab(name));
   } catch (err) {
     panel.innerHTML = "<div class='meta'>Can't load history right now (offline?).</div>";
   }
