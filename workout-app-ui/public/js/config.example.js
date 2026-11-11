@@ -12,9 +12,10 @@ window.APP_CONFIG = {
   // ignores this value.
   nativeApiBase: "",
 
-  // Optional. Where tapping the version in the top bar leads (Settings -> Workout
-  // screen features -> "Update link on the version"): your own page with the newest
-  // app. https only. Left empty, the project's public tags page is opened.
+  // Needed only if you switch on "Update link on the version" (Settings -> Workout
+  // screen features -> App): the address of YOUR page with the newest app, opened in
+  // the browser when you tap the version in the top bar. https only. The repo holds
+  // no address on purpose; left empty, the tap just tells you that none is set.
   updateUrl: "",
 
   // Optional, native Android build only. A second backend address tried when

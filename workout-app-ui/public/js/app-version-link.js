@@ -1,21 +1,23 @@
 // ---------- version link (feature "versionLink", off by default) ----------
 // Tapping the version in the top bar opens the page where the newest version
-// can be downloaded, in the phone's browser. Where that page is comes from
-// APP_CONFIG.updateUrl in js/config.js (your own downloads page); without it,
-// the public releases of the project are opened.
+// can be downloaded, in the phone's browser. There is deliberately NO address in
+// the repo: each person sets their own as APP_CONFIG.updateUrl in js/config.js
+// (gitignored, see config.example.js). Without one, the tap says so.
 
-const DEFAULT_UPDATE_URL = "https://github.com/ImIceTry/stronger/tags";
-
-// Only https addresses are ever opened.
+// Only https addresses are ever opened; "" means none is set.
 function updateLinkUrl() {
   const cfg = typeof window !== "undefined" && window.APP_CONFIG;
   const own = cfg && typeof cfg.updateUrl === "string" ? cfg.updateUrl.trim() : "";
-  return /^https:\/\/\S+$/.test(own) ? own : DEFAULT_UPDATE_URL;
+  return /^https:\/\/\S+$/.test(own) ? own : "";
 }
 
 function openUpdateLink() {
   if (!featureEnabled("versionLink")) return false;
   const url = updateLinkUrl();
+  if (!url) {
+    alert("No update link is set. Add updateUrl (an https address) to js/config.js, see config.example.js, then rebuild or redeploy the app.");
+    return false;
+  }
   const cap = typeof window !== "undefined" && window.Capacitor;
   if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
     // The Android shell hands any address outside the app to the system browser

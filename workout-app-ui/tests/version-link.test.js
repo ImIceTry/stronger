@@ -10,6 +10,7 @@ const FEATURES = fs.readFileSync(path.join(__dirname, "..", "public", "js", "app
 
 function load({ enabled = true, config, native = false, noElement = false } = {}) {
   const opened = [];
+  const alerts = [];
   const attrs = {};
   const classes = new Set();
   const el = {
@@ -28,21 +29,33 @@ function load({ enabled = true, config, native = false, noElement = false } = {}
   const state = { enabled };
   const ctx = vm.createContext({
     window: win,
+    alert: (m) => alerts.push(m),
     document: { getElementById: (id) => (id === "app-version" && !noElement ? el : null) },
     featureEnabled: (id) => state.enabled && id === "versionLink",
   });
   vm.runInContext(SRC, ctx);
-  return { ctx, el, opened, attrs, classes, state };
+  return { ctx, el, opened, alerts, attrs, classes, state };
 }
 
 const tests = [];
 const test = (n, f) => tests.push([n, f]);
-const DEFAULT = "https://github.com/ImIceTry/stronger/tags";
 
-test("switch on, browser: the click opens the default page in a new tab", () => {
+test("switch on, browser: the click opens the configured page in a new tab", () => {
+  const t = load({ config: { updateUrl: "https://example.org/apk/" } });
+  t.el.listeners.click();
+  assert.deepStrictEqual(t.opened, [["open", "https://example.org/apk/", "_blank", "noopener"]]);
+});
+
+test("switch on but no address configured: nothing opens, the user is told what to add", () => {
   const t = load();
   t.el.listeners.click();
-  assert.deepStrictEqual(t.opened, [["open", DEFAULT, "_blank", "noopener"]]);
+  assert.deepStrictEqual(t.opened, []);
+  assert.strictEqual(t.alerts.length, 1);
+  assert.ok(t.alerts[0].includes("updateUrl") && t.alerts[0].includes("config.js"));
+});
+
+test("the repo itself holds no download address", () => {
+  assert.ok(!/https?:\/\/(?!example\.org)/.test(SRC.replace(/^\s*\/\/.*$/gm, "")), "app-version-link.js must not contain an address");
 });
 
 test("switch off: the click does nothing and the version is not styled as a link", () => {
@@ -69,11 +82,12 @@ test("own https address from the config wins", () => {
   assert.strictEqual(t.opened[0][1], "https://example.org/apk/");
 });
 
-test("a config address that is not https (or empty, or not text) falls back to the default", () => {
+test("a config address that is not https (or empty, or not text) counts as not set", () => {
   for (const bad of ["http://example.org/apk/", "javascript:alert(1)", "", "   ", 5, null, "https://has space.org/x y"]) {
     const t = load({ config: { updateUrl: bad } });
     t.el.listeners.click();
-    assert.strictEqual(t.opened[0][1], DEFAULT, String(bad));
+    assert.deepStrictEqual(t.opened, [], String(bad));
+    assert.strictEqual(t.alerts.length, 1, String(bad));
   }
 });
 
