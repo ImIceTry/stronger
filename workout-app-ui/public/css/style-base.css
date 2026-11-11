@@ -143,6 +143,14 @@ h1 {
   font-size: 11px;
 }
 
+/* feature "versionLink": the version opens the download page */
+#app-version.is-link {
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 8px 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .badge {
   background: #ffb020;
   color: #1a1200;

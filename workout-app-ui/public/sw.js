@@ -30,7 +30,7 @@ const SHELL_ASSETS = [
   "js/app-utils.js", "js/app-features.js", "js/app-exercise-search.js", "js/app-native-http.js", "js/app-signin-again.js", "js/app-api.js", "js/app-outbox.js", "js/app-offline-prefetch.js", "js/app-nav.js", "js/app-screens.js",
   "js/app-overlay.js", "js/app-settings.js", "js/app-profile.js",
   "js/app-history.js", "js/app-history-filter.js", "js/app-exercises.js", "js/app-home.js", "js/app-plan.js",
-  "js/app-rest-timer.js", "js/app-finish.js", "js/app-share-finish.js", "js/app-pr-anomaly.js",
+  "js/app-rest-timer.js", "js/app-finish.js", "js/app-share-finish.js", "js/app-version-link.js", "js/app-pr-anomaly.js",
   "js/app-add-exercise.js", "js/app-rpe-picker.js", "js/app-reorder.js",
   "js/app-row-actions.js", "js/app-exercise-menu.js", "js/app-radial-menu.js", "js/app-graph-viewer.js", "js/app-plates.js", "js/app-warmup-ramp.js",
   "js/app-set-manipulation.js", "js/app-render.js", "js/app.js",

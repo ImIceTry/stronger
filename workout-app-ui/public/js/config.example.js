@@ -12,6 +12,11 @@ window.APP_CONFIG = {
   // ignores this value.
   nativeApiBase: "",
 
+  // Optional. Where tapping the version in the top bar leads (Settings -> Workout
+  // screen features -> "Update link on the version"): your own page with the newest
+  // app. https only. Left empty, the project's public tags page is opened.
+  updateUrl: "",
+
   // Optional, native Android build only. A second backend address tried when
   // nativeApiBase cannot be used (unreachable, or blocked by Cloudflare
   // Access), for example a VPN address. Reads fall back on any failure; writes
