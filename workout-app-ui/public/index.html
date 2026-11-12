@@ -29,6 +29,7 @@
 <link rel="stylesheet" href="css/style-exercises.css">
 <link rel="stylesheet" href="css/style-shared-ui.css">
 <link rel="stylesheet" href="css/style-modals.css">
+<link rel="stylesheet" href="css/style-statistics.css">
 </head>
 <body>
 
@@ -293,6 +294,8 @@
          data-snapshot image with the same offline-cache-fallback pattern
          apiGet already uses for JSON, and sets .src once it resolves --
          no src here means nothing loads before that runs. -->
+    <div id="stats-native" class="hidden"></div>
+    <div id="stats-grafana">
     <div class="chart-card">
       <img class="grafana-embed" data-snapshot="workout-1" alt="Training volume over time">
     </div>
@@ -320,6 +323,7 @@
     </div>
     <div class="chart-card">
       <img class="grafana-embed" data-snapshot="yazio-3" alt="Nutrition stat">
+    </div>
     </div>
   </section>
 
@@ -508,6 +512,7 @@
 <script src="js/app-exercise-menu.js"></script>
 <script src="js/app-radial-menu.js"></script>
 <script src="js/app-graph-viewer.js"></script>
+<script src="js/app-statistics.js"></script>
 <script src="js/app-plates.js"></script>
 <script src="js/app-warmup-ramp.js"></script>
 <script src="js/app-set-manipulation.js"></script>

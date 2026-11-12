@@ -103,7 +103,7 @@ function showScreen(name) {
   if (name === "history") renderHistoryScreen();
   if (name === "exercises") renderExercisesScreen();
   if (name === "profile") renderProfileScreen();
-  if (name === "statistics") loadGrafanaSnapshots();
+  if (name === "statistics") { loadGrafanaSnapshots(); renderStatisticsCharts(); }
   // Remembered across reloads (see boot()) so refreshing the page doesn't
   // always dump you back on Home -- only for the 4 real bottom-nav
   // destinations, not sub-screens reached by drilling in from one of them.

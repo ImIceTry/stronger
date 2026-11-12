@@ -129,7 +129,9 @@ cleanly if left unconfigured.
   `grafanaSnapshotBase` in `config.js` to a URL serving pre-rendered PNG
   snapshots. These are static images fetched by the frontend, not live
   iframes, and no code here renders your Grafana dashboards; you would build
-  that pipeline separately. Left unset, those panels just stay blank.
+  that pipeline separately. Left unset, those panels just stay blank. Without
+  Grafana, the "Statistics charts" switch (Settings) draws charts in that tab
+  from the app's own data instead and hides the blank panels.
 - **Yazio bodyweight import** — set `YAZIO_DB_PATH` to a SQLite file with a
   `weight(date, kg)` table. Missing file → that one endpoint 404s, nothing
   else is affected.
