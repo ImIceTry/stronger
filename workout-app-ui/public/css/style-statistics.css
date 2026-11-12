@@ -1,0 +1,123 @@
+/* Statistics tab charts drawn by the app (app-statistics.js, switch
+   "statsCharts"). One accent (--blue, which follows the color scheme) for
+   every data mark: each chart shows a single series, so a second hue would
+   carry no meaning. Text stays in the text tokens, never the accent. */
+
+.stats-select {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.stats-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.stats-chips {
+  display: inline-flex;
+  background: var(--input-bg);
+  border-radius: 10px;
+  padding: 2px;
+}
+
+.stats-chip {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.stats-chip.active {
+  background: var(--bg-elevated);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.stats-sub {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.stats-delta {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.stats-delta.up::before { content: "\25B2  "; color: var(--green); font-size: 10px; }
+.stats-delta.down::before { content: "\25BC  "; color: var(--text-secondary); font-size: 10px; }
+
+.stats-plot {
+  position: relative;
+  margin-top: 12px;
+}
+
+.stats-svg {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.stats-grid { stroke: var(--border); stroke-width: 1; }
+.stats-axis { fill: var(--text-secondary); font-size: 10px; }
+.stats-line { fill: none; stroke: var(--blue); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.stats-dot { fill: var(--blue); stroke: var(--bg-elevated); stroke-width: 2; }
+.stats-dot.best { fill: var(--bg-elevated); stroke: var(--blue); stroke-width: 2.5; }
+.stats-dot.quiet { display: none; }
+.stats-dot.stats-hot { display: inline; stroke: var(--text); }
+.stats-bar { fill: var(--blue); }
+.stats-bar.current { fill-opacity: 0.45; }
+.stats-bar.stats-hot { fill-opacity: 1; filter: brightness(1.25); }
+.stats-avg { stroke: var(--text-secondary); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.stats-day { fill: var(--input-bg); }
+.stats-day.on { fill: var(--blue); }
+.stats-day.stats-hot { stroke: var(--text); stroke-width: 1.5; }
+.stats-hit { fill: transparent; cursor: pointer; }
+
+.stats-tip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.stats-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 0;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+}
+.stats-rank-row:last-child { border-bottom: none; }
+.stats-rank-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-rank-row .stats-delta { min-width: 56px; text-align: right; }
+.stats-spark { flex: none; }
+.stats-spark polyline { fill: none; stroke: var(--blue); stroke-width: 1.5; stroke-linejoin: round; }

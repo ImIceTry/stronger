@@ -1442,7 +1442,7 @@ document.getElementById("btn-add-exercise-empty").addEventListener("click", () =
   if (initialScreen === "history") renderHistoryScreen();
   if (initialScreen === "exercises") renderExercisesScreen();
   if (initialScreen === "profile") renderProfileScreen();
-  if (initialScreen === "statistics") loadGrafanaSnapshots();
+  if (initialScreen === "statistics") { loadGrafanaSnapshots(); renderStatisticsCharts(); }
 
   if (activeWorkout) {
     showActiveWorkoutOverlay();

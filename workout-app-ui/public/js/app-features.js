@@ -52,6 +52,7 @@ const FEATURE_REGISTRY = [
   { id: "anomalyHint", group: "feedback", label: "Low-weight warning", desc: "Asks about a set far below your usual weight", where: "Appears right after you log a weight far below your usual." },
   { id: "finishSummary", group: "feedback", label: "Finish summary", desc: "Review screen with a comparison to last time before saving", where: "Appears after you tap Finish, before the workout is saved." },
   { id: "workoutNotification", group: "feedback", label: "Workout notification", desc: "Ongoing notification with rest countdown and next set (app only)", where: "In your phone's notification shade while a workout runs." },
+  { id: "statsCharts", group: "app", defaultOff: true, label: "Statistics charts", desc: "Charts drawn by the app: progress of one exercise, which lifts are moving, volume / workouts / time per week, and a training calendar. Needs no Grafana; without a Grafana snapshot base the empty Grafana panels are hidden", where: "The Statistics tab" },
   { id: "versionLink", group: "app", defaultOff: true, label: "Update link on the version", desc: "Tap the version number in the top bar to open your download page in the browser. You must first put your own address as updateUrl in js/config.js (see config.example.js); without it the tap only says none is set", where: "The version number at the top right." },
 
   { id: "shareOnFinish", group: "feedback", defaultOff: true, requires: "finishSummary", label: "Share on finish", desc: "A Share button on the finish summary, before you save", where: "Finish summary" },

@@ -22,7 +22,8 @@ Strong CSV mirror). All of them are off unless you set them.
 
 Things that are ImIceTry-specific and safe to ignore or remove:
 - The Statistics tab uses Grafana snapshots (config.js: grafanaSnapshotBase).
-  Leave it unset, or ask Claude to hide that tab.
+  Leave it unset and turn on "Statistics charts" in Settings instead: the app
+  then draws its own charts there and hides the empty Grafana panels.
 - backfill_instructions_mapped.py / migrate_strong_history.py are one-off
   scripts for his own history.
 - Many code comments say "ImIceTry's ask"; that is just history.
