@@ -88,7 +88,8 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  padding-bottom: 72px; /* room for the fixed bottom nav */
+  /* room for the fixed bottom nav, which grows by the home-indicator inset */
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Phase 5.8: every screen's <h1> was already rendering identically (32px/700
@@ -180,7 +181,7 @@ h1 {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 64px;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   z-index: 9;
   display: flex;
   justify-content: space-between;

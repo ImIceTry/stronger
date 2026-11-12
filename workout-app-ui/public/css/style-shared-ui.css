@@ -42,14 +42,16 @@
   top: 0;
   z-index: 9;
   background: var(--bg);
-  /* Doubles the resting gap above the title (was 16px here + #app's own
-     16px padding-top = 32px total; this makes it 48+16 = 64px). Scoped to
-     just the big page-title row, not the base .section-header rule shared
-     by in-page sub-headers like "Templates"/"Muscle Map", which stay as
-     they were. setupCollapsingTitle's shrink range is self-calibrated from
-     wherever the header actually rests (see app.js), so it adapts to this
-     automatically -- no JS change needed. */
-  margin-top: 48px;
+  /* Resting gap above the title: this 28px + #app's own 16px padding-top
+     = 44px, exactly #topbar's height, so the title rests directly under the
+     top bar (version, badges) the way a native large title rests under its
+     nav bar. It was 48px (64px total) for a while, but on a phone the system
+     status bar already sits above this gap (an installed iOS app reserves
+     ~59px for it), so that read as a large empty band. Not less than 44px:
+     #topbar sits above this row and would swallow taps on its icons.
+     setupCollapsingTitle's shrink range is self-calibrated from wherever the
+     header actually rests (see app.js), so it adapts -- no JS change. */
+  margin-top: 28px;
 }
 
 .section-header.page-title h1 {
