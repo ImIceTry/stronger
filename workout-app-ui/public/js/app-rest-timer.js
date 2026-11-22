@@ -38,6 +38,18 @@ function restNotificationExtra(exerciseName) {
 
 function updateRestNotification(exerciseName, remaining) {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
+  // Only while the app is out of sight -- that is what this approximation is
+  // for. With the app open the countdown is already on screen, and each
+  // 5s refresh is a brand-new Notification, which phones show as a fresh
+  // banner every time: a stream of "Resting" pop-ups mid-workout. Becoming
+  // hidden posts one straight away (handleRestTimerVisibilityChange).
+  if (document.visibilityState === "visible") {
+    if (restNotification) {
+      try { restNotification.close(); } catch (err) { /* already gone */ }
+      restNotification = null;
+    }
+    return;
+  }
   const label = formatClock(remaining);
   try {
     if (restNotification) restNotification.close();
@@ -354,9 +366,15 @@ async function stopWorkoutForegroundNotification() {
 // notification-driven adjustment (adjustLiveRestTimer, no interval tick of
 // its own) can repaint it the same way, reading straight off
 // restTimerContext rather than a closure-local snapshot.
+// "<exercise>::<position>" of a live bar whose new duration is being typed
+// in the edit numpad, else null. Its digits must not be overwritten by the
+// per-second tick, or a typed value vanishes within a second and editing a
+// running timer looks like it does nothing. The bar's fill keeps moving.
+let restEditTypingKey = null;
+
 function updateRestTimerDom(exerciseName, position, ctx = restTimerContext) {
   const tick = document.querySelector(`[data-rest-divider="${exerciseName}::${position}"] .rest-divider-tick`);
-  if (tick) tick.textContent = formatClock(ctx.remaining);
+  if (tick && restEditTypingKey !== `${exerciseName}::${position}`) tick.textContent = formatClock(ctx.remaining);
   // Bar depletes leftward as time passes (2026-09-11, ImIceTry's own call) --
   // width itself carries the countdown, not just the digits. transition on
   // .rest-divider-progress (CSS) smooths each 1px-per-second jump instead
@@ -485,8 +503,16 @@ function beginRestTimerTick(exerciseName, position) {
 }
 
 function handleRestTimerVisibilityChange() {
-  if (document.visibilityState !== "visible") return;
   if (!restTimerContext || restTimerHandle == null) return;
+  if (document.visibilityState !== "visible") {
+    // Leaving the app mid-rest: show the countdown notification now rather
+    // than up to 5s later (in-app refreshes are skipped, see
+    // updateRestNotification).
+    updateRestNotification(restTimerContext.exerciseName, restTimerContext.remaining);
+    return;
+  }
+  // Back in the app: the on-screen bar takes over, so clear the banner.
+  updateRestNotification(restTimerContext.exerciseName, restTimerContext.remaining);
   tickRestTimer(restTimerContext.exerciseName, restTimerContext.position, { value: 0 });
 }
 
@@ -659,6 +685,20 @@ function openRestEditNumpad(exerciseName, position) {
   // into the numpad's own `values` and waiting for NEXT to apply it --
   // ImIceTry's own report that the buffered version "stops and waits till I
   // press next" is correct, that's not what a live nudge should feel like.
+  // typed: digits were entered (not just +/-30). Closing the numpad any way
+  // but Skip keeps a typed duration, the same rule a finished set's KG/REPS
+  // edit follows -- before, only NEXT applied it and an outside tap threw it
+  // away, so an edit "didn't stick". A live timer restarts from the typed
+  // value; an idle or finished one just stores it, nothing starts.
+  let typed = false;
+  const editKey = `${exerciseName}::${position}`;
+  const saveDuration = (seconds) => {
+    if (!activeWorkout.restPositionOverrides) activeWorkout.restPositionOverrides = {};
+    if (!activeWorkout.restPositionOverrides[exerciseName]) activeWorkout.restPositionOverrides[exerciseName] = {};
+    activeWorkout.restPositionOverrides[exerciseName][position] = seconds;
+    if (set) set.rest_after_sec = seconds;
+    persistActiveWorkout();
+  };
   const fields = [{
     key: "duration",
     isDuration: true,
@@ -666,16 +706,40 @@ function openRestEditNumpad(exerciseName, position) {
     step: 30,
     numpadSlot: "skip",
     selectOnType: true,
-    onStep: isLive ? (delta) => { adjustLiveRestTimer(delta); return restTimerContext ? restTimerContext.remaining : null; } : undefined,
+    onType: () => {
+      typed = true;
+      if (isLive) restEditTypingKey = editKey;
+    },
+    // A +/-30 nudge replaces whatever was typed with the live remaining time
+    // (runStep syncs the display), so there is no typed value left to keep.
+    onStep: isLive ? (delta) => {
+      typed = false;
+      restEditTypingKey = null;
+      adjustLiveRestTimer(delta);
+      return restTimerContext ? restTimerContext.remaining : null;
+    } : undefined,
   }];
+  const onClose = (values, reason) => {
+    restEditTypingKey = null;
+    restorePriorInput();
+    if (!typed || reason === "skip" || values[0] === "") {
+      // The tick skipped this bar while digits were typed; repaint it now.
+      if (isLive && restTimerContext && restTimerContext.exerciseName === exerciseName && restTimerContext.position === position) {
+        updateRestTimerDom(exerciseName, position);
+      }
+      return;
+    }
+    const newSeconds = mmssBufferToSeconds(values[0]);
+    saveDuration(newSeconds);
+    const stillLive = restTimerContext && restTimerContext.exerciseName === exerciseName && restTimerContext.position === position;
+    if (stillLive) startRestTimer(exerciseName, position, newSeconds);
+    renderActiveScreen({ preserveAddBox: true });
+  };
   openNumpad(exerciseName, position, fields, (values) => {
+    restEditTypingKey = null;
     restorePriorInput();
     const newSeconds = mmssBufferToSeconds(values[0]);
-    if (!activeWorkout.restPositionOverrides) activeWorkout.restPositionOverrides = {};
-    if (!activeWorkout.restPositionOverrides[exerciseName]) activeWorkout.restPositionOverrides[exerciseName] = {};
-    activeWorkout.restPositionOverrides[exerciseName][position] = newSeconds;
-    if (set) set.rest_after_sec = newSeconds;
-    persistActiveWorkout();
+    saveDuration(newSeconds);
     startRestTimer(exerciseName, position, newSeconds);
     // Starting a timer for a divider that was idle or historical (not
     // already live) needs its own re-render to actually switch that
@@ -687,5 +751,5 @@ function openRestEditNumpad(exerciseName, position) {
     // way. Must come after startRestTimer, not before, so restTimerContext
     // is already set when this render reads it.
     renderActiveScreen();
-  }, undefined, restorePriorInput);
+  }, undefined, onClose);
 }

@@ -467,7 +467,12 @@ async function renderMuscleMap() {
   }
 
   const view = muscleMapView;
+  // The map only knows muscles that some exercise is tagged with. Exercises
+  // imported from another app usually carry no tags, and the map then drew
+  // an all-grey body with no hint why.
+  const untagged = !scores || Object.keys(scores).length === 0;
   container.innerHTML = `
+    ${untagged ? `<div class="meta muscle-map-empty">None of your exercises has muscles set yet, so nothing can be shown. Add them per exercise: open the exercise, tap &#8943;, then Edit exercise details.</div>` : ""}
     <div class="muscle-map-toggle">
       <button class="muscle-map-toggle-btn${view === "front" ? " active" : ""}" data-view="front">Front</button>
       <button class="muscle-map-toggle-btn${view === "back" ? " active" : ""}" data-view="back">Back</button>
