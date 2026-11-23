@@ -4,30 +4,65 @@
 // and a summary ("✓ 3 sets  90×9  85×7  80×9"). The finished work stays
 // readable, the boundary to the next exercise is obvious, and the workout
 // gets shorter to scroll as it goes. Tapping the folded card (summary or name)
-// opens the sets again for the rest of this workout.
+// opens the sets again; an up-arrow next to ⋯ folds it back.
 //
 // It stays open while its rest timer runs or the numpad is editing it, so the
 // timer you are watching never disappears, and it never folds while editing a
 // saved workout or building a template, where every row is there to be changed.
 // Called at the end of every renderExerciseCard pass, which rebuilds the card.
 
+// Both sets are per workout: opened by a tap, and folded with the up-arrow.
+// A choice the user made wins over the automatic "stay open" below.
 const expandedFinishedExercises = new Set();
-let expandedFinishedFor = null; // which workout the set above belongs to
+const foldedByUser = new Set();
+let expandedFinishedFor = null; // which workout the sets above belong to
 
 function collapseFinishedExercise(card, exerciseName) {
   if (!activeWorkout || buildingTemplateMode || editingWorkoutId != null) return;
   if (expandedFinishedFor !== activeWorkout.started_at) {
     expandedFinishedExercises.clear();
+    foldedByUser.clear();
     expandedFinishedFor = activeWorkout.started_at;
   }
-  if (expandedFinishedExercises.has(exerciseName)) return;
-  if (activeNumpadSession && activeNumpadSession.exerciseName === exerciseName) return;
-  if (card.querySelector(".rest-divider.live")) return;
+  if (!finishedRows(card)) return;
 
+  // Finished but open (opened by a tap, or held open by its rest timer or the
+  // numpad): an up-arrow next to ⋯ folds it on request.
+  const holdOpen = expandedFinishedExercises.has(exerciseName)
+    || (!foldedByUser.has(exerciseName)
+      && ((activeNumpadSession && activeNumpadSession.exerciseName === exerciseName)
+        || card.querySelector(".rest-divider.live")));
+  if (holdOpen) addFoldButton(card, exerciseName);
+  else foldCard(card, exerciseName);
+}
+
+// The logged rows when every set row is logged, else null.
+function finishedRows(card) {
   const rows = [...card.querySelectorAll(".set-row")];
   const done = rows.filter((r) => r.classList.contains("confirmed"));
-  if (!rows.length || done.length !== rows.length) return;
+  return rows.length && done.length === rows.length ? done : null;
+}
 
+function addFoldButton(card, exerciseName) {
+  if (card.querySelector("h3 .fold-btn")) return;
+  const btn = document.createElement("button");
+  btn.className = "icon-btn fold-btn";
+  btn.title = "Fold";
+  btn.setAttribute("aria-label", `Fold ${exerciseName}`);
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 15l6-6 6 6"/></svg>`;
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    expandedFinishedExercises.delete(exerciseName);
+    foldedByUser.add(exerciseName);
+    btn.remove();
+    foldCard(card, exerciseName);
+  });
+  card.querySelector("h3 .options-btn").before(btn);
+}
+
+function foldCard(card, exerciseName) {
+  const done = finishedRows(card);
+  if (!done) return;
   const chips = done.map((row) => {
     const kg = (row.querySelector(".col-kg")?.textContent || "").trim();
     const second = (row.querySelector(".col-reps")?.textContent || "").trim();
@@ -58,9 +93,12 @@ function wireFoldedCardTap(card) {
     if (e.target.closest(".options-btn")) return;
     e.preventDefault();
     e.stopPropagation();
-    expandedFinishedExercises.add(card.dataset.foldedExercise);
+    const exerciseName = card.dataset.foldedExercise;
+    expandedFinishedExercises.add(exerciseName);
+    foldedByUser.delete(exerciseName);
     card.classList.remove("collapsed-done");
     const summary = card.querySelector(".done-summary");
     if (summary) summary.remove();
+    addFoldButton(card, exerciseName);
   }, true);
 }

@@ -942,6 +942,9 @@ button.col-set:disabled { cursor: default; }
 }
 .done-summary::after { content: "\203A"; margin-left: auto; font-size: 20px; line-height: 1; }
 .done-summary-count { color: var(--green-light); font-weight: 600; }
+/* Up-arrow next to ⋯ on a finished exercise that is open; folds it again. */
+.exercise-card h3 .fold-btn { margin-left: auto; color: var(--green-light); }
+.exercise-card h3 .fold-btn svg { width: 22px; height: 22px; display: block; }
 .done-summary-chip {
   background: color-mix(in srgb, var(--green) 22%, transparent);
   color: var(--text);
