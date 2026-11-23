@@ -47,6 +47,7 @@ const FEATURE_REGISTRY = [
 
   { id: "workoutNotes", group: "workout", label: "Workout notes", desc: "One note for the whole workout", where: "The \u22ef menu next to the workout name." },
   { id: "radialGesture", group: "workout", label: "Radial menu swipe", desc: "Swipe right on an exercise card to open the quick-action circle", where: "Swipe right on any exercise card." },
+  { id: "collapseDone", group: "workout", defaultOff: true, label: "Fold finished exercises", desc: "Once every set of an exercise is logged, it shrinks to one line with its sets (90×9, 85×7 …). Tap the line to open the sets again. Stays open while its rest timer runs", where: "The workout screen, on each finished exercise." },
 
   { id: "prToast", group: "feedback", label: "PR celebration", desc: "Toast when a set beats your previous best", where: "Pops up right after you log a set that beats your best." },
   { id: "anomalyHint", group: "feedback", label: "Low-weight warning", desc: "Asks about a set far below your usual weight", where: "Appears right after you log a weight far below your usual." },

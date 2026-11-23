@@ -919,3 +919,33 @@ button.confirm-btn.confirmed:active .confirmed-check { color: var(--blue); }
 }
 .exercise-name-link:disabled,
 button.col-set:disabled { cursor: default; }
+
+/* Finished exercise folded to one line (switch collapseDone,
+   app-collapse-done.js): only the name, the superset label if any, and a
+   tappable summary of the logged sets stay visible. */
+.exercise-card.collapsed-done > :not(h3):not(.superset-label):not(.done-summary) { display: none; }
+.exercise-card.collapsed-done .exercise-name-link { color: var(--green-light); }
+.done-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  width: 100%;
+  padding: 2px 0 10px;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+.done-summary::after { content: "\203A"; margin-left: auto; font-size: 20px; line-height: 1; }
+.done-summary-count { color: var(--green-light); font-weight: 600; }
+.done-summary-chip {
+  background: color-mix(in srgb, var(--green) 22%, transparent);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-variant-numeric: tabular-nums;
+}
