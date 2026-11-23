@@ -96,7 +96,11 @@ async function saveAsTemplate() {
     return;
   }
   try {
-    await apiPost("/api/templates/scratch", { name, exercise_names: exerciseNames });
+    if (activeWorkout.editTemplateId != null) {
+      await saveEditedTemplate(name, exerciseNames);
+    } else {
+      await apiPost("/api/templates/scratch", { name, exercise_names: exerciseNames });
+    }
   } catch (err) {
     alert("Couldn't save this template (offline?). Try again once you have signal.");
     return;

@@ -318,10 +318,15 @@ function openTemplateOptionsMenu(tpl, context) {
   sidePanel.querySelector('[data-action="edit"]').addEventListener("click", async () => {
     closeTopNavLayer();
     if (isScratch) {
-      // Editing a scratch template's own exercise list (as opposed to a
-      // real logged workout, which startEditingWorkout already handles)
-      // isn't built yet -- Duplicate + Delete cover "change it" for now.
-      alert("Editing a scratch template's exercise list isn't built yet -- duplicate it and delete the old one for now.");
+      // A scratch template has no logged workout for startEditingWorkout to
+      // open; its own exercise list is edited in the builder that made it
+      // (app-template-edit.js, behind its switch).
+      if (featureEnabled("templateEdit")) {
+        if (context === "preview") closeTemplatePreview();
+        startTemplateEdit(tpl);
+      } else {
+        alert("Editing this template's exercise list is behind a switch: turn on \"Edit templates\" in Settings, Workout Screen. Or duplicate it and delete the old one.");
+      }
       return;
     }
     try {

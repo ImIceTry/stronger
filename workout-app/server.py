@@ -353,15 +353,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/templates/scratch":
                 data = self._read_json_body()
                 name = _clean_template_name(data.get("name"))
-                exercise_names = data.get("exercise_names")
-                if not isinstance(exercise_names, list) or not exercise_names:
-                    raise ValueError("exercise_names must be a non-empty list")
-                cleaned = []
-                for n in exercise_names:
-                    n = str(n or "").strip()
-                    if not n:
-                        raise ValueError("exercise_names entries must be non-empty strings")
-                    cleaned.append(n)
+                cleaned = _clean_exercise_names(data.get("exercise_names"))
                 template = db.create_scratch_template(conn, name, cleaned)
                 self._json(200, template)
                 return
@@ -516,6 +508,23 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(200, db.get_template(conn, int(m.group(1))))
                 return
 
+            m = RE_TEMPLATE_EXERCISES.match(path)
+            if m:
+                data = self._read_json_body()
+                name = _clean_template_name(data.get("name"))
+                cleaned = _clean_exercise_names(data.get("exercise_names"))
+                template_id = int(m.group(1))
+                template = db.get_template(conn, template_id)
+                if template is None or template["deleted"]:
+                    self._json(404, {"error": "template not found"})
+                    return
+                if template["source_workout_id"] is not None:
+                    # A template made from a logged workout reads its exercises
+                    # from that workout; it is edited by editing the workout.
+                    raise ValueError("only a template built from the exercise list can be edited here")
+                self._json(200, db.set_template_exercises(conn, template_id, name, cleaned))
+                return
+
             m = RE_TEMPLATE_FOLDER.match(path)
             if m:
                 data = self._read_json_body()
@@ -643,6 +652,18 @@ def _clean_template_name(name):
     if len(name) > MAX_TEMPLATE_NAME_LEN:
         raise ValueError(f"name exceeds {MAX_TEMPLATE_NAME_LEN} characters")
     return name
+
+
+def _clean_exercise_names(exercise_names):
+    if not isinstance(exercise_names, list) or not exercise_names:
+        raise ValueError("exercise_names must be a non-empty list")
+    cleaned = []
+    for n in exercise_names:
+        n = str(n or "").strip()
+        if not n:
+            raise ValueError("exercise_names entries must be non-empty strings")
+        cleaned.append(n)
+    return cleaned
 
 
 def main():

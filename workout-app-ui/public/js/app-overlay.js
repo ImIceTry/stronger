@@ -231,7 +231,7 @@ document.getElementById("btn-cancel-workout").addEventListener("click", async ()
   const wasEditing = editingWorkoutId != null;
   const wasBuildingTemplate = buildingTemplateMode;
   const confirmMessage = wasBuildingTemplate
-    ? "Discard this template?"
+    ? (activeWorkout && activeWorkout.editTemplateId != null ? "Discard these changes to the template?" : "Discard this template?")
     : wasEditing ? "Discard these edits?" : "Cancel this workout? Everything logged will be lost.";
   // App-styled dialog, not the browser's native confirm() (2026-09-18,
   // ImIceTry: it "looks like a system notification... make it look like

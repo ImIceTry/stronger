@@ -385,6 +385,23 @@ def main():
         status, ctx = request("GET", "/api/exercises/Never%20Logged/context")
         check(ctx["last_by_handle"] == {} and ctx["last_by_machine_handle"] == {}, "unknown exercise -> no handle buckets")
 
+        print("editing a scratch template: name and exercise list replaced, order kept")
+        status, tpl = request("POST", "/api/templates/scratch", {"name": "Arms", "exercise_names": ["Edit Test Curl", "Edit Test Pushdown"]})
+        check(status == 200, "scratch template created")
+        tid = tpl["id"]
+        status, body = request("PUT", f"/api/templates/{tid}/exercises",
+                               {"name": "Arms + forearms", "exercise_names": ["Edit Test Pushdown", "Edit Test Curl", "Edit Test Wrist Curl"]})
+        check(status == 200 and body["name"] == "Arms + forearms", f"edit saved with the new name, got {status} {body}")
+        status, body = request("GET", f"/api/templates/{tid}/exercises")
+        check(body["exercises"] == ["Edit Test Pushdown", "Edit Test Curl", "Edit Test Wrist Curl"],
+              f"new list in the new order, a new exercise created on the way, got {body}")
+        status, body = request("PUT", f"/api/templates/{tid}/exercises", {"name": "Arms", "exercise_names": []})
+        check(status == 400, f"an empty list is refused, not saved as an empty template, got {status}")
+        status, body = request("GET", f"/api/templates/{tid}/exercises")
+        check(len(body["exercises"]) == 3, "a refused edit leaves the template as it was")
+        status, body = request("PUT", "/api/templates/999999/exercises", {"name": "X", "exercise_names": ["Edit Test Curl"]})
+        check(status == 404, f"unknown template -> 404, got {status}")
+
         print("\nAll checks passed.")
     finally:
         proc.terminate()
