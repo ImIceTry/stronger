@@ -121,9 +121,14 @@ def muscle_group_scores(conn, recent_days=30, prior_days=90, stale_days=14):
     - intensity: weighted average %1RM (each set's weight_kg / that
       exercise's all-time-best weight_kg) across the muscle group's real
       working sets in the last `recent_days`.
-    - progress: recent-period weighted-average est-1RM vs the prior period
-      (`recent_days` to `prior_days` ago) weighted-average est-1RM, as a
-      ratio, clamped to [0.5, 1.5] before normalizing to 0-1.
+    - progress: per exercise, its recent-period average est-1RM vs its own
+      prior-period (`recent_days` to `prior_days` ago) average, as a ratio;
+      those ratios averaged across the muscle group's exercises (weighted by
+      recent set count * role weight, like strength), clamped to [0.5, 1.5]
+      before normalizing to 0-1. Only exercises trained in both periods
+      count, and 0kg sets are left out. An average of absolute est-1RM across
+      exercises moved with the exercise mix: more sets of a heavy machine and
+      fewer bodyweight sets read as +100% with every lift flat.
     All three stay scoped to weight_reps exercises (est-1RM/%1RM are
     inherently weight-based) and are `None` when there's no real recent
     data to compute them from -- callers should treat that as "no data,"
@@ -266,7 +271,7 @@ def muscle_group_scores(conn, recent_days=30, prior_days=90, stale_days=14):
         strength_terms = []  # (weight, ratio) per exercise, weight = recent set count * role weight
         intensity_terms = []  # (role weight, %1RM value) per set
         recent_1rm_terms = []  # (role weight, est-1RM value) per set
-        prior_1rm_terms = []
+        progress_terms = []  # (weight, recent/prior ratio) per exercise trained in both periods
 
         for eid, data in exercises.items():
             w = data["weight"]
@@ -277,7 +282,13 @@ def muscle_group_scores(conn, recent_days=30, prior_days=90, stale_days=14):
                 strength_terms.append((w * len(data["recent_1rm"]), ratio))
             intensity_terms.extend((w, v) for v in data["recent_pct1rm"])
             recent_1rm_terms.extend((w, v) for v in data["recent_1rm"])
-            prior_1rm_terms.extend((w, v) for v in data["prior_1rm"])
+            # A 0kg set has est-1RM 0, which would read as a collapse of
+            # strength rather than "no load to compare".
+            recent = [v for v in data["recent_1rm"] if v > 0]
+            prior = [v for v in data["prior_1rm"] if v > 0]
+            if recent and prior:
+                exercise_ratio = (sum(recent) / len(recent)) / (sum(prior) / len(prior))
+                progress_terms.append((w * len(recent), exercise_ratio))
 
         if not recent_1rm_terms:
             # No real recent (last recent_days) weight_reps training for this
@@ -307,14 +318,12 @@ def muscle_group_scores(conn, recent_days=30, prior_days=90, stale_days=14):
             else None
         )
 
-        # progress: recent weighted-avg vs prior weighted-avg, as a ratio --
-        # 1.0 (flat) maps to the midpoint of the 0-1 output range, clamped
-        # to +/-50% so one noisy outlier set can't swing the whole muscle
-        # group's color
-        if prior_1rm_terms:
-            recent_avg = sum(w * v for w, v in recent_1rm_terms) / sum(w for w, _ in recent_1rm_terms)
-            prior_avg = sum(w * v for w, v in prior_1rm_terms) / sum(w for w, _ in prior_1rm_terms)
-            raw_ratio = recent_avg / prior_avg if prior_avg > 0 else 1.0
+        # progress: weighted average of each exercise's own recent/prior
+        # ratio -- 1.0 (flat) maps to the midpoint of the 0-1 output range,
+        # clamped to +/-50% so one noisy outlier set can't swing the whole
+        # muscle group's color
+        if progress_terms:
+            raw_ratio = sum(w * r for w, r in progress_terms) / sum(w for w, _ in progress_terms)
             clamped = max(0.5, min(1.5, raw_ratio))
             progress = (clamped - 0.5) / 1.0  # maps [0.5, 1.5] -> [0, 1]
             # Same ratio the clamped progress score above is built from,
@@ -326,9 +335,10 @@ def muscle_group_scores(conn, recent_days=30, prior_days=90, stale_days=14):
             # already the ratio the color itself is derived from).
             progress_pct_delta = round((raw_ratio - 1) * 100, 1)
         else:
-            # no prior-period data to compare against (e.g. a muscle only
-            # just started being trained) -- neither reward nor penalize,
-            # and no real delta to report either.
+            # no exercise with loaded sets in both periods to compare (e.g. a
+            # muscle only just started being trained, or every exercise for
+            # it is new) -- neither reward nor penalize, and no real delta to
+            # report either.
             progress = 0.5
             progress_pct_delta = None
 
