@@ -51,6 +51,7 @@
   --text: #e9e6f2;
   --text-secondary: #96909f;
   --input-bg: #2c2836;
+  --band: #16141b; /* between exercises on the workout screen (style-active-workout.css) */
 }
 
 * { box-sizing: border-box; }

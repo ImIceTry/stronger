@@ -134,6 +134,39 @@
   touch-action: pan-y; /* left-to-right swipe opens the radial menu */
 }
 
+/* "Stronger" scheme only: with spacing alone, the name of the next exercise
+   read as part of the one above, and the only lines on screen were the rest
+   lines between sets. Exercises are now separated by a darker full-width
+   band, and idle rest lines are shortened and centred, so a thin line means
+   rest and the band means the next exercise. A superset stays one block (no
+   band between its members). The "Strong" scheme keeps the spacing-only look. */
+:root[data-theme="stronger"] .exercise-card {
+  margin: 0;
+  padding-top: 26px;
+  padding-bottom: 4px;
+  position: relative;
+}
+:root[data-theme="stronger"] .exercise-card.superset-cont { padding-top: 8px; }
+:root[data-theme="stronger"] .exercise-card:not(:first-child):not(.superset-cont)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -16px;
+  right: -16px;
+  height: 8px;
+  background: var(--band);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  pointer-events: none;
+}
+/* A superset card's 3px left border moves its padding box in; reach the edge anyway. */
+:root[data-theme="stronger"] .exercise-card.superset:not(:first-child):not(.superset-cont)::before { left: -19px; }
+:root[data-theme="stronger"] .rest-divider.idle {
+  width: calc(100% - 112px);
+  margin-left: 56px;
+  margin-right: 56px;
+}
+
 /* Reorder mode (2026-09-12) -- long-pressing any exercise name collapses
    the whole screen to this: just names + a drag handle, no set tables.
    .dragging lifts that one row visually (shadow + scale) while it's being
