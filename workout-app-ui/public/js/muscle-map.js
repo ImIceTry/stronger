@@ -360,7 +360,7 @@ function renderMuscleMapBody(view, scores) {
       // against: 5.5%, 16.7%, -1.4%, etc.), and a bare "5" left a visible
       // gap before the fixed-position "%" that made rows look empty/
       // inconsistently sized next to a row showing "16". 3-digit values
-      // (the rare machine-jump case) just overflow past the padding as-is.
+      // widen the whole column below (DIGITS_RIGHT_X).
       const digits = String(Math.abs(rounded)).padStart(2, "0");
       return { muscle, bodyAnchor, sign, digits };
     })
@@ -381,9 +381,14 @@ function renderMuscleMapBody(view, scores) {
   // so this doesn't depend on monospace font metrics to line up.
   // Back down to +4 (2026-09-16, ImIceTry's ask -- keep the sign and number
   // close together; a genuine 3-digit swing is rare enough in practice not
-  // to design the common 2-digit case around).
+  // to design the common 2-digit case around). When a 3-digit value does
+  // show, it used to run left into the sign ("+126" drew as "±26"), so every
+  // row's digit edge moves right by one digit width per extra digit; the
+  // 2-digit layout is unchanged and the column stays aligned.
+  const DIGIT_WIDTH = 1.4; // about 0.58em of the 2.4px label font
+  const maxDigits = Math.max(2, ...visible.map((v) => v.digits.length));
   const SIGN_X = COLUMN_X;
-  const DIGITS_RIGHT_X = COLUMN_X + 4;
+  const DIGITS_RIGHT_X = COLUMN_X + 4 + (maxDigits - 2) * DIGIT_WIDTH;
   const SUFFIX_X = DIGITS_RIGHT_X + 0.3;
   // Muscle name sits above its own percentage row (2026-09-16, ImIceTry's
   // ask), in the same muted gray as the tap-through detail panel's stat
