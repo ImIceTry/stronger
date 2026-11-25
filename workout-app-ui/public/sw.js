@@ -33,7 +33,7 @@ const SHELL_ASSETS = [
   "js/app-rest-timer.js", "js/app-finish.js", "js/app-share-finish.js", "js/app-version-link.js", "js/app-pr-anomaly.js",
   "js/app-add-exercise.js", "js/app-rpe-picker.js", "js/app-reorder.js",
   "js/app-row-actions.js", "js/app-exercise-menu.js", "js/app-radial-menu.js", "js/app-graph-viewer.js", "js/app-statistics.js", "js/app-plates.js", "js/app-warmup-ramp.js",
-  "js/app-set-manipulation.js", "js/app-render.js", "js/app.js",
+  "js/app-set-manipulation.js", "js/app-render.js", "js/app-collapse-done.js", "js/app.js",
 ];
 // Gitignored per-install file, absent on a fresh install -- addAll() is
 // all-or-nothing, so listing it above would stop the worker installing.

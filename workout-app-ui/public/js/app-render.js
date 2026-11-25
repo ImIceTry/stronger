@@ -601,6 +601,7 @@ function renderExerciseCard(card, exerciseName, previousData, unitType, justConf
       unconfirmSet(exerciseName, parseInt(btn.dataset.uncheckOrder, 10) - 1);
     });
   });
+  if (featureEnabled("collapseDone")) collapseFinishedExercise(card, exerciseName);
   // A redraw rebuilds every box from saved data, so a numpad still open on
   // this exercise would show the old value and lose its highlight until the
   // next keypress (a finished set's typed digits live only inside the numpad,
