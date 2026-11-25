@@ -1066,6 +1066,25 @@ def create_scratch_template(conn, name, exercise_names):
     return get_template(conn, template_id)
 
 
+def set_template_exercises(conn, template_id, name, exercise_names):
+    """Replaces a scratch template's name and its whole exercise list in one
+    transaction, the same rows create_scratch_template writes. Like creating
+    one, it never touches workouts/sets."""
+    conn.execute("DELETE FROM template_exercises WHERE template_id = ?", (template_id,))
+    for i, exercise_name in enumerate(exercise_names):
+        exercise_id = get_or_create_exercise(conn, exercise_name)
+        conn.execute(
+            "INSERT INTO template_exercises (template_id, exercise_id, set_order) VALUES (?, ?, ?)",
+            (template_id, exercise_id, i + 1),
+        )
+    conn.execute(
+        "UPDATE templates SET name = ?, updated_at = ? WHERE id = ?",
+        (name, _now_iso(), template_id),
+    )
+    conn.commit()
+    return get_template(conn, template_id)
+
+
 def sync_template_from_workout(conn, template_id, workout_id):
     """"Save and update the template" (2026-09-14, ImIceTry's own ask, Finish-
     button dialog): make a template match a just-finished workout exactly.
