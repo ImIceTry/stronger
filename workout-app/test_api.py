@@ -290,6 +290,28 @@ def main():
         check("forearms" not in body["muscles"], "a muscle with zero real sets is absent, not a fabricated score")
         check(shoulders["sets_7d"] == 1.0, f"only the 5-days-ago set counts toward the week, got {shoulders['sets_7d']}")
 
+        print("muscle progress: each exercise against itself, so a change in exercise mix is not progress")
+        # Two exercises on one muscle, both exactly flat: a 100kg machine and a
+        # 0kg bodyweight raise. Only the mix changes (1+3 sets before, 3+1 now).
+        # Averaging est-1RM across both read this as +200%.
+        mix_old = (now - timedelta(days=61)).strftime("%Y-%m-%d %H:%M:%S")
+        mix_new = (now - timedelta(days=6)).strftime("%Y-%m-%d %H:%M:%S")
+        for date, machine_sets, raise_sets in [(mix_old, 1, 3), (mix_new, 3, 1)]:
+            sets = [("Mix Test Ab Machine", 100)] * machine_sets + [("Mix Test Leg Raise", 0)] * raise_sets
+            request("POST", "/api/workouts/sync", {
+                "name": "Core", "started_at": date, "finished_at": date, "duration_sec": 1800,
+                "sets": [{"exercise_name": name, "set_order": i + 1, "weight_kg": w, "reps": 10}
+                         for i, (name, w) in enumerate(sets)],
+            })
+        conn = sqlite3.connect(env["WORKOUT_DB_PATH"])
+        conn.execute("UPDATE exercises SET primary_muscles = 'upper abs', unit_type = 'weight_reps' "
+                     "WHERE name IN ('Mix Test Ab Machine', 'Mix Test Leg Raise')")
+        conn.commit()
+        conn.close()
+        status, body = request("GET", "/api/muscle-scores")
+        abs_pct = body["muscles"]["upper abs"]["progress_pct_delta"]
+        check(abs_pct == 0.0, f"both exercises flat -> 0% progress, not a mix effect, got {abs_pct}")
+
         print("weekly hard sets: warm-ups skipped, a drop pair is one set, secondary movers count half")
         week_date = (now - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S")
         request("POST", "/api/workouts/sync", {
