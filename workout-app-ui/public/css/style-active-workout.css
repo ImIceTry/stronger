@@ -867,6 +867,16 @@ button.confirm-btn.confirmed:active .confirmed-check { color: var(--blue); }
   transition: opacity var(--motion-fast) var(--motion-ease), display var(--motion-fast) allow-discrete;
 }
 .suggestions.hidden { display: none; opacity: 0; }
+
+/* While searching (app-add-exercise.js) the box fills the visible height of
+   the workout screen and is scrolled to its top; the list sits in the flow
+   below the input and uses the room that is left. */
+.add-exercise.searching { min-height: var(--add-search-h, auto); }
+.add-exercise.searching .suggestions {
+  position: static;
+  margin-top: 8px;
+  max-height: max(200px, calc(var(--add-search-h, 260px) - 64px));
+}
 @starting-style {
   .suggestions:not(.hidden) { opacity: 0; }
 }
