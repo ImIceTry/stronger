@@ -9,7 +9,9 @@
 // below -- instead its opacity fades out over the same approach, driven by
 // the same progress value below, so the version number/sync badge just
 // dissolve as a title arrives rather than the two ever visually colliding.
-const TITLE_DOCK_OFFSET = 0; // where the title's sticky "top" lands -- style.css .page-title must match
+// Where the title's sticky "top" lands: below the status bar (--top-inset) or
+// the sign-in banner, so it is read from the header's computed style.
+const titleDockOffset = (header) => parseFloat(getComputedStyle(header).top) || 0;
 const TITLE_MIN_SCALE = 0.62;
 const topbarEl = document.getElementById("topbar");
 let titleScrollHandler = null;
@@ -39,14 +41,14 @@ function setupCollapsingTitle(screenEl) {
   // with content above it, viewport safe-area insets, etc). A fixed guess
   // here previously meant progress was already partway to 1 at rest instead
   // of starting clean at 0.
-  const restingDistance = Math.max(1, header.getBoundingClientRect().top - TITLE_DOCK_OFFSET);
+  const restingDistance = Math.max(1, header.getBoundingClientRect().top - titleDockOffset(header));
 
   const applyScale = () => {
     titleScrollTicking = false;
-    // Once stuck, rect.top clamps to TITLE_DOCK_OFFSET and stays there --
+    // Once stuck, rect.top clamps to the dock offset and stays there --
     // that's what makes this "distance to stick" hit 0 and stay fully
     // shrunk, rather than tracking raw (and screen-dependent) scrollY.
-    const distanceToStick = header.getBoundingClientRect().top - TITLE_DOCK_OFFSET;
+    const distanceToStick = header.getBoundingClientRect().top - titleDockOffset(header);
     const progress = Math.min(1, Math.max(0, 1 - distanceToStick / restingDistance));
     h1.style.setProperty("--title-scale", (1 - progress * (1 - TITLE_MIN_SCALE)).toFixed(3));
     topbarEl.style.opacity = (1 - progress).toFixed(3);

@@ -44,7 +44,7 @@
 .pr-toast {
   position: fixed;
   left: 50%;
-  bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(90px + var(--bottom-inset));
   transform: translate(-50%, 12px);
   background: var(--blue);
   color: #fff;
@@ -153,7 +153,7 @@
 .modal-content.size-full .modal-full-footer {
   flex-shrink: 0;
   padding: 16px;
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding-bottom: max(16px, var(--bottom-inset));
   border-top: 1px solid var(--border);
 }
 
@@ -171,7 +171,7 @@
   border-top: 1px solid var(--border);
   border-radius: 12px 12px 0 0;
   padding: 16px;
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding-bottom: max(16px, var(--bottom-inset));
   z-index: 21;
   opacity: 1;
   transform: translateY(0);
@@ -227,7 +227,7 @@
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
   padding: 20px 0;
-  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  padding-bottom: max(20px, var(--bottom-inset));
   overflow-y: auto;
   opacity: 0;
   transition: transform var(--motion-base) var(--motion-ease), opacity var(--motion-base) var(--motion-ease);
@@ -480,6 +480,8 @@
   background: var(--bg);
   display: flex;
   flex-direction: column;
+  /* starts below the status bar; its background still fills behind it */
+  padding-top: var(--top-inset);
   /* UI Polish Pass (2026-09-18): was full-bleed edge-to-edge, the one
      screen in the app that didn't match #app's own centered/capped
      layout (padding:16px; max-width:480px; margin:0 auto), confirmed live
@@ -513,6 +515,8 @@
 .tpl-preview-footer {
   flex-shrink: 0;
   padding: 12px 16px 16px;
+  /* START WORKOUT stays above the phone's gesture/button bar */
+  padding-bottom: calc(16px + var(--bottom-inset));
   border-top: 1px solid var(--border);
 }
 
@@ -845,6 +849,8 @@ body.signin-banner-on { padding-top: var(--signin-banner-h, 0px); }
 body.signin-banner-on #topbar,
 body.signin-banner-on .active-overlay,
 body.signin-banner-on .section-header.page-title { top: var(--signin-banner-h, 0px); }
+/* the banner's own padding already covers the status bar, so don't add it twice */
+body.signin-banner-on .active-overlay { padding-top: 0; }
 .signin-again-banner {
   position: fixed;
   top: 0;
@@ -855,7 +861,7 @@ body.signin-banner-on .section-header.page-title { top: var(--signin-banner-h, 0
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+  padding: max(10px, var(--top-inset)) 16px 10px;
   background: var(--blue);
   color: #fff;
   font-size: 14px;

@@ -39,7 +39,7 @@
    position; see setupCollapsingTitle in app.js. */
 .section-header.page-title {
   position: sticky;
-  top: 0;
+  top: var(--top-inset);
   z-index: 9;
   background: var(--bg);
   /* Resting gap above the title: this 28px + #app's own 16px padding-top
