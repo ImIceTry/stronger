@@ -17,6 +17,8 @@
   background: var(--bg);
   display: flex;
   flex-direction: column;
+  /* starts below the status bar; its background still fills behind it */
+  padding-top: var(--top-inset);
   opacity: 1;
   transform: translateY(0);
   transition: opacity 260ms ease-out, transform 260ms ease-out, display 260ms allow-discrete;
@@ -39,7 +41,7 @@
   overflow-y: auto;
   padding: 16px;
   /* last item (cancel link) stays clear of the home indicator */
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(16px + var(--bottom-inset));
 }
 
 .cancel-link {
