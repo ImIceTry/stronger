@@ -788,6 +788,7 @@ function openNumpad(exerciseName, index, fields, onDone, startIndex, onCancel) {
     } else {
       values[fieldIndex] += d;
     }
+    if (currentField().onType) currentField().onType(values[fieldIndex]);
     updateFieldDisplay();
   };
   const appendDecimal = () => {
@@ -798,6 +799,7 @@ function openNumpad(exerciseName, index, fields, onDone, startIndex, onCancel) {
   };
   const backspace = () => {
     values[fieldIndex] = values[fieldIndex].slice(0, -1);
+    if (currentField().onType) currentField().onType(values[fieldIndex]);
     updateFieldDisplay();
   };
   const stepValue = (delta) => {
@@ -1041,7 +1043,9 @@ function openNumpad(exerciseName, index, fields, onDone, startIndex, onCancel) {
         activeNumpadSession = null;
         clearNumpadFieldHighlight();
         closeDockedPanel();
-        if (onCancel) onCancel(values);
+        // "skip" tells the rest edit not to keep a typed duration: Skip
+        // means "close without (re)starting anything".
+        if (onCancel) onCancel(values, "skip");
         // Only stop a timer if it's actually this position's own -- editing
         // an idle/historical divider while some other position's timer is
         // live elsewhere shouldn't cancel that unrelated countdown.

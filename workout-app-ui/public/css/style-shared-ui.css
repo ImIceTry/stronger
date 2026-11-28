@@ -627,6 +627,21 @@ button.confirm-btn:active {
 .settings-row-disabled { opacity: 0.45; }
 .settings-radial-intro { margin: 0 0 4px; }
 
+/* Search box above the switches (app-feature-search.js, switch
+   settingsSearch). While a query is typed, the example previews and the
+   reset row step aside so only matching switches remain. */
+.feature-search { margin: 8px 0 4px; }
+.feature-search.hidden { display: none; }
+.feature-search-input { font-weight: 400; }
+.feature-search-empty { margin-top: 12px; }
+.feature-search-empty.hidden { display: none; }
+#workout-features-body .settings-row.hidden,
+#workout-features-body .settings-section-title.hidden,
+#workout-features-body .pf-group.hidden,
+#workout-features-body .meta.hidden,
+.feature-searching .pf-preview,
+.feature-searching #workout-features-reset { display: none; }
+
 /* Example-exercise previews on Settings -> Workout Screen. A static mock of
    the real workout screen (same classes), pinned under the top bar while the
    switches of its section scroll past. */

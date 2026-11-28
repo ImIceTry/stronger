@@ -89,8 +89,13 @@ function shiftHistoricalIndexMap(exerciseName, afterIndex, delta, totalPositions
 // through dropContinuationByExercise to find the pair's original source
 // position (handles a continuation itself being dropped again), then counts
 // only non-continuation positions up to and including it.
+// Swiped-away pending positions don't count either: they keep their slot
+// (see skippedPositionsByExercise) but no longer render, so counting them
+// made the rows after a deleted one skip a number -- delete an added 4th
+// set, add another, and it read "5".
 function logicalSetNumber(exerciseName, position) {
   const map = dropContinuationByExercise[exerciseName] || {};
+  const skipped = skippedPositionsByExercise[exerciseName] || new Set();
   const parentOf = {};
   Object.keys(map).forEach((k) => {
     parentOf[map[k]] = parseInt(k, 10);
@@ -99,7 +104,7 @@ function logicalSetNumber(exerciseName, position) {
   while (parentOf[root] != null) root = parentOf[root];
   let count = 0;
   for (let p = 0; p <= root; p++) {
-    if (parentOf[p] == null) count++;
+    if (parentOf[p] == null && (p === root || !skipped.has(p))) count++;
   }
   return count;
 }

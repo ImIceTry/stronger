@@ -543,7 +543,11 @@ async function openMachineSettingsModal(exerciseName) {
 // snapshotted onto each set when it is confirmed.
 const HANDLE_OPTIONS = ["Straight bar", "EZ bar", "V-bar", "Rope", "Single D-handle", "Wide lat bar", "Close-grip triangle", "Cuffs"];
 const GRIP_OPTIONS = ["Overhand", "Underhand", "Neutral"];
-const HANDLE_EXERCISE_RE = /\(Cable\)|pulldown/i;
+// Matched on the name because imported exercises often have no equipment
+// set. "\(Cable\)" alone missed common cable names such as "Triceps Pushdown
+// (Cable - Straight Bar)", "Tricep Pushdown" or "Cable Fly", so those never
+// showed the handle/grip chip at all.
+const HANDLE_EXERCISE_RE = /cable|pulldown|pushdown/i;
 const GRIP_ONLY_EXERCISE_RE = /pull[- ]?up|chin[- ]?up/i;
 
 function exerciseSupportsHandles(exerciseName) {
