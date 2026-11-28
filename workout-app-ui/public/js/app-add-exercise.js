@@ -57,6 +57,77 @@ function renderSuggestions(names) {
   suggestionsEl.classList.remove("hidden");
 }
 
+// -- the open search is a layer of its own (2026-11-28, ImIceTry: "it's as
+// high as it gets on screen and you can't close it with the back button") --
+// Opening it moves the box to the top of the workout screen with the list
+// filling the room below (it used to hang off the page's last row, half
+// behind the keyboard or the phone's buttons), and registers a nav layer, so
+// the back button / back gesture or a tap anywhere else closes just the search
+// instead of folding the whole workout away.
+
+const addExerciseBox = document.getElementById("add-exercise-box");
+let addSearchOutsideTap = null;
+
+function addSearchOpen() {
+  return addExerciseBox.classList.contains("searching");
+}
+
+// The box takes the overlay body's full visible height while searching, so
+// the body can always scroll it to the top, however little sits below it.
+function fitAddSearch() {
+  if (!addSearchOpen() || !activeOverlayBody) return;
+  addExerciseBox.style.setProperty("--add-search-h", activeOverlayBody.clientHeight - 24 + "px");
+  const delta = addExerciseBox.getBoundingClientRect().top - activeOverlayBody.getBoundingClientRect().top - 8;
+  activeOverlayBody.scrollTop += delta;
+}
+
+function openAddExerciseSearch() {
+  document.getElementById("btn-add-exercise-empty").classList.add("hidden");
+  addExerciseBox.classList.remove("hidden");
+  exerciseInput.focus();
+  showExerciseSuggestions(""); // nothing typed yet: offer recently/often done exercises
+  if (addSearchOpen()) return;
+  addExerciseBox.classList.add("searching");
+  fitAddSearch();
+  pushNavLayer(closeAddExerciseSearchViaNav);
+  // A tap outside the box closes the search; the tap itself still goes through.
+  addSearchOutsideTap = (e) => {
+    if (!addExerciseBox.contains(e.target)) closeAddExerciseSearch();
+  };
+  document.addEventListener("click", addSearchOutsideTap, true);
+  window.addEventListener("resize", fitAddSearch); // the keyboard opening or closing
+}
+
+// Leaves searching mode only (layout, listeners, the nav layer); callers decide
+// whether the box itself collapses. Direct closes consume their own history
+// entry like closeDockedPanel does; a back press (handlingPopstate) already did.
+function endAddExerciseSearch() {
+  if (!addSearchOpen()) return;
+  addExerciseBox.classList.remove("searching");
+  addExerciseBox.style.removeProperty("--add-search-h");
+  if (addSearchOutsideTap) document.removeEventListener("click", addSearchOutsideTap, true);
+  addSearchOutsideTap = null;
+  window.removeEventListener("resize", fitAddSearch);
+  const top = navLayers[navLayers.length - 1];
+  if (top && top.onClose === closeAddExerciseSearchViaNav) {
+    navLayers.pop();
+    if (!handlingPopstate) history.back();
+  }
+}
+
+function closeAddExerciseSearch() {
+  endAddExerciseSearch();
+  exerciseInput.value = "";
+  exerciseInput.blur();
+  suggestionsEl.classList.add("hidden");
+  addExerciseBox.classList.add("hidden");
+  document.getElementById("btn-add-exercise-empty").classList.remove("hidden");
+}
+
+function closeAddExerciseSearchViaNav() {
+  closeAddExerciseSearch();
+}
+
 function addExerciseToWorkout(name) {
   if (!activeWorkout.exercises.includes(name)) {
     activeWorkout.exercises.push(name);

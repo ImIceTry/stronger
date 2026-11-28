@@ -1203,6 +1203,7 @@ async function renderActiveScreen(opts = {}) {
   // Every redraw caused by a user action still collapses it as before.
   const keepAddBox = !!opts.preserveAddBox && !document.getElementById("add-exercise-box").classList.contains("hidden");
   if (!keepAddBox) {
+    endAddExerciseSearch(); // app-add-exercise.js: drops its back-button layer too
     document.getElementById("exercise-input").value = "";
     document.getElementById("exercise-suggestions").classList.add("hidden");
   }
@@ -1390,10 +1391,7 @@ function logSet(exerciseName, index, fields) {
 // empty-workout): reveal the real input immediately (don't wait for a
 // re-render, since typing text doesn't commit an exercise yet) and focus it.
 document.getElementById("btn-add-exercise-empty").addEventListener("click", () => {
-  document.getElementById("btn-add-exercise-empty").classList.add("hidden");
-  document.getElementById("add-exercise-box").classList.remove("hidden");
-  document.getElementById("exercise-input").focus();
-  showExerciseSuggestions(""); // nothing typed yet: offer recently/often done exercises
+  openAddExerciseSearch(); // app-add-exercise.js
 });
 
 // ---------- history screen ---------- (moved to app-history.js, 2026-09-17)
